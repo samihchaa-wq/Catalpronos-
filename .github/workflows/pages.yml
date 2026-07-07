@@ -32,6 +32,10 @@ jobs:
           mkdir -p _site
           cp index.html _site/index.html
           cp "catalpronos app.html" "_site/catalpronos app.html"
+          cp v3-patch.js _site/v3-patch.js
+          cp manifest.webmanifest _site/manifest.webmanifest
+          cp sw.js _site/sw.js
+          cp icon.svg _site/icon.svg
           touch _site/.nojekyll
 
       - name: Envoyer l’artefact
