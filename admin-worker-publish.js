@@ -80,7 +80,8 @@
     matchSelect?.addEventListener('change', refresh);
     refresh();
 
-    overlay.querySelector('#cwPublish')?.addEventListener('click', async e => {
+    overlay.querySelector('#cwPublish')?.addEventListener('click', async event => {
+      const button = event.currentTarget;
       const m = matches[Number(matchSelect.value)];
       const score = overlay.querySelector('#cwScore').value.trim();
       const pin = overlay.querySelector('#cwPin').value.trim();
@@ -88,8 +89,8 @@
       const status = overlay.querySelector('#cwStatus');
       if (!m || !score || !winner) return alert('Complète le match, le score et le vainqueur.');
       if (pin) localStorage.setItem(PIN_KEY, pin);
-      e.currentTarget.disabled = true;
-      e.currentTarget.textContent = 'Publication…';
+      button.disabled = true;
+      button.textContent = 'Publication…';
       status.className = 'cw-status';
       status.textContent = 'Envoi vers GitHub…';
       try {
@@ -102,13 +103,13 @@
         if (!response.ok || !payload.ok) throw new Error(payload.error || 'Publication refusée');
         status.className = 'cw-status cw-ok';
         status.textContent = '✓ Publié. Le site GitHub Pages va se redéployer automatiquement.';
-        e.currentTarget.textContent = '✓ Publié';
+        button.textContent = '✓ Publié';
         setTimeout(() => location.reload(), 5000);
       } catch (error) {
         status.className = 'cw-status cw-error';
         status.textContent = 'Erreur : ' + error.message;
-        e.currentTarget.disabled = false;
-        e.currentTarget.textContent = 'Publier pour tout le monde';
+        button.disabled = false;
+        button.textContent = 'Publier pour tout le monde';
       }
     });
   }
