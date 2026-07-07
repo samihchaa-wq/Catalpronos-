@@ -42,6 +42,18 @@ jobs:
           cp manifest.webmanifest _site/manifest.webmanifest
           cp sw.js _site/sw.js
           cp icon.svg _site/icon.svg
+          cp results.json _site/results.json
+
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('_site/catalpronos app.html')
+          s = p.read_text(encoding='utf-8')
+          s = s.replace('r8: ["France","Maroc",null,null,null,null,null,null],   // 8es par index bracket', 'r8: ["1-0","0-3","0-1","1-4","1-2","2-3",null,null],   // scores par index bracket')
+          s = s.replace('r8:  ["France","Maroc",null,null,null,null,null,null],', 'r8:  ["France","Maroc","Espagne","Belgique","Norvège","Angleterre",null,null],')
+          s = s.replace('"m": 94, "date": "07.07", "time": "05h", "bracket8": 3, "score": null', '"m": 94, "date": "07.07", "time": "05h", "bracket8": 3, "score": "1-4"')
+          p.write_text(s, encoding='utf-8')
+          PY
+
           touch _site/.nojekyll
 
       - name: Envoyer le site
