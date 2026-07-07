@@ -44,6 +44,7 @@ jobs:
           cp final-bracket-admin-fix.js _site/final-bracket-admin-fix.js
           cp admin-worker-publish.js _site/admin-worker-publish.js
           cp results-sync.js _site/results-sync.js
+          cp participant-stats.js _site/participant-stats.js
           cp manifest.webmanifest _site/manifest.webmanifest
           cp sw.js _site/sw.js
           cp icon.svg _site/icon.svg
@@ -60,13 +61,6 @@ jobs:
           s = s.replace('const ROUND_PTS = {r16:1, r8:4, qf:8, sf:16};', 'const ROUND_PTS = {r16:1, r8:3, qf:5, sf:8};')
           s = s.replace('const CHAMP_PTS = 20;', 'const CHAMP_PTS = 12;')
           app.write_text(s, encoding='utf-8')
-
-          index = Path('_site/index.html')
-          h = index.read_text(encoding='utf-8')
-          h = h.replace('./calendar-votes-fix.js?v=361', './calendar-votes-fix.js?v=362')
-          h = h.replace('./final-bracket-admin-fix.js?v=361', './final-bracket-admin-fix.js?v=363')
-          h = h.replace('./final-bracket-admin-fix.js?v=362', './final-bracket-admin-fix.js?v=363')
-          index.write_text(h, encoding='utf-8')
           PY
 
           touch _site/.nojekyll
