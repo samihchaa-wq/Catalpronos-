@@ -43,6 +43,7 @@ jobs:
           cp calendar-votes-fix.js _site/calendar-votes-fix.js
           cp final-bracket-admin-fix.js _site/final-bracket-admin-fix.js
           cp admin-workflow-link.js _site/admin-workflow-link.js
+          cp admin-worker-publish.js _site/admin-worker-publish.js
           cp manifest.webmanifest _site/manifest.webmanifest
           cp sw.js _site/sw.js
           cp icon.svg _site/icon.svg
@@ -66,13 +67,16 @@ jobs:
 
           index = Path('_site/index.html')
           h = index.read_text(encoding='utf-8')
-          for old in ('333','341','352','353','354','355','356','357'):
-              h = h.replace(f'./v3-ux.js?v={old}', './v3-ux.js?v=358')
-              h = h.replace(f'./calendar-votes-fix.js?v={old}', './calendar-votes-fix.js?v=358')
-              h = h.replace(f'./final-bracket-admin-fix.js?v={old}', './final-bracket-admin-fix.js?v=358')
-              h = h.replace(f'catalpronos%20app.html?v={old}', 'catalpronos%20app.html?v=358')
-          if 'admin-workflow-link.js' not in h:
-              h = h.replace('</body>', '<script src="./admin-workflow-link.js?v=358"></script></body>')
+          for old in ('333','341','352','353','354','355','356','357','358'):
+              h = h.replace(f'./v3-ux.js?v={old}', './v3-ux.js?v=359')
+              h = h.replace(f'./calendar-votes-fix.js?v={old}', './calendar-votes-fix.js?v=359')
+              h = h.replace(f'./final-bracket-admin-fix.js?v={old}', './final-bracket-admin-fix.js?v=359')
+              h = h.replace(f'catalpronos%20app.html?v={old}', 'catalpronos%20app.html?v=359')
+          extra = '<script src="./admin-worker-publish.js?v=359"></script>'
+          h = h.replace('<script src="./admin-workflow-link.js?v=358"></script>', '')
+          h = h.replace('<script src="./admin-workflow-link.js?v=359"></script>', '')
+          if 'admin-worker-publish.js' not in h:
+              h = h.replace('</body>', extra + '</body>')
           index.write_text(h, encoding='utf-8')
           PY
 
