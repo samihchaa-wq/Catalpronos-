@@ -55,15 +55,21 @@ jobs:
           s = s.replace('r8: ["France","Maroc",null,null,null,null,null,null],   // 8es par index bracket', 'r8: ["1-0","0-3","0-1","1-4","1-2","2-3",null,null],   // scores par index bracket')
           s = s.replace('r8:  ["France","Maroc",null,null,null,null,null,null],', 'r8:  ["France","Maroc","Espagne","Belgique","Norvège","Angleterre",null,null],')
           s = s.replace('"m": 94, "date": "07.07", "time": "05h", "bracket8": 3, "score": null', '"m": 94, "date": "07.07", "time": "05h", "bracket8": 3, "score": "1-4"')
+          s = s.replace('const ROUND_PTS = {r16:1, r8:4, qf:8, sf:16};', 'const ROUND_PTS = {r16:1, r8:3, qf:5, sf:8};')
+          s = s.replace('const CHAMP_PTS = 20;', 'const CHAMP_PTS = 12;')
+          s = s.replace("{label:'16es de finale', matches:MATCHES_16, real:REAL.r16, pts:2}", "{label:'16es de finale', matches:MATCHES_16, real:REAL.r16, pts:1}")
+          s = s.replace("{label:'8es de finale', matches:null, real:REAL.r8, pts:4, n:8}", "{label:'8es de finale', matches:null, real:REAL.r8, pts:3, n:8}")
+          s = s.replace("{label:'Quarts de finale', matches:null, real:REAL.qf, pts:8, n:4}", "{label:'Quarts de finale', matches:null, real:REAL.qf, pts:5, n:4}")
+          s = s.replace("{label:'Demi-finales', matches:null, real:REAL.sf, pts:16, n:2}", "{label:'Demi-finales', matches:null, real:REAL.sf, pts:8, n:2}")
           app.write_text(s, encoding='utf-8')
 
           index = Path('_site/index.html')
           h = index.read_text(encoding='utf-8')
-          for old in ('333','341','352','353','354'):
-              h = h.replace(f'./v3-ux.js?v={old}', './v3-ux.js?v=355')
-              h = h.replace(f'./calendar-votes-fix.js?v={old}', './calendar-votes-fix.js?v=355')
-              h = h.replace(f'./final-bracket-admin-fix.js?v={old}', './final-bracket-admin-fix.js?v=355')
-              h = h.replace(f'catalpronos%20app.html?v={old}', 'catalpronos%20app.html?v=355')
+          for old in ('333','341','352','353','354','355'):
+              h = h.replace(f'./v3-ux.js?v={old}', './v3-ux.js?v=356')
+              h = h.replace(f'./calendar-votes-fix.js?v={old}', './calendar-votes-fix.js?v=356')
+              h = h.replace(f'./final-bracket-admin-fix.js?v={old}', './final-bracket-admin-fix.js?v=356')
+              h = h.replace(f'catalpronos%20app.html?v={old}', 'catalpronos%20app.html?v=356')
           index.write_text(h, encoding='utf-8')
           PY
 
