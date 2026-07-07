@@ -2,10 +2,14 @@
 (() => {
   'use strict';
 
+  let currentPlayer = null;
+
   const style = document.createElement('style');
   style.textContent = `
     .fb-replacement{display:block;margin-top:3px;font-size:10px;color:var(--gold);text-decoration:none;font-weight:800;white-space:normal}
     .fb-replacement::before{content:'Qualifié réel : ';color:var(--muted);font-weight:600}
+    .fb-alive-count{display:inline-flex;align-items:center;gap:7px;margin-top:8px;padding:7px 10px;border:1px solid rgba(45,155,90,.45);border-radius:999px;background:rgba(45,155,90,.1);color:var(--green-light);font-size:12px;font-weight:900}
+    .fb-alive-count b{font-size:15px;color:var(--text)}
     .fb-admin-btn{flex:0 0 auto;padding:12px 16px;background:none;border:0;color:var(--gold);font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;cursor:pointer;border-bottom:2px solid transparent}
     .fb-admin-btn:hover{border-bottom-color:var(--gold)}
     .fb-admin-overlay{position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:10050;display:flex;align-items:flex-end;justify-content:center}
@@ -25,6 +29,17 @@
     .ux-team.fb-picked{color:var(--gold);background:rgba(201,168,76,.08);font-weight:800}
   `;
   document.head.appendChild(style);
+
+  function remainingTeams(fp) {
+    const teams = new Set([
+      ...(fp.r16 || []),
+      ...(fp.r8 || []),
+      ...(fp.qf || []),
+      ...(fp.sf || []),
+      fp.champion
+    ].filter(Boolean));
+    return [...teams].filter(team => !ELIMINATED.has(team));
+  }
 
   function teamRow(team, pick, actual) {
     if (!team) return `<div class="ux-team fb-neutral"><span>À venir</span><span></span></div>`;
@@ -56,59 +71,30 @@
     const target = document.getElementById('finals-bracket-content');
     const fp = FINALS_PRONOS[player];
     if (!target || !fp) return;
+    currentPlayer = player;
+
+    const alive = remainingTeams(fp);
+    const aliveLabel = alive.length === 1 ? 'équipe encore en compétition' : 'équipes encore en compétition';
 
     const rounds = [
-      {
-        label:'16es',
-        teams:MATCHES_16.map(m => [m[0], m[1]]),
-        picks:fp.r16,
-        actual:REAL.r16
-      },
-      {
-        label:'8es',
-        teams:[[0,1],[2,3],[4,5],[6,7],[8,9],[10,11],[12,13],[14,15]].map(([a,b]) => [fp.r16[a], fp.r16[b]]),
-        picks:fp.r8,
-        actual:REAL.r8
-      },
-      {
-        label:'Quarts',
-        teams:[[0,1],[2,3],[4,5],[6,7]].map(([a,b]) => [fp.r8[a], fp.r8[b]]),
-        picks:fp.qf,
-        actual:REAL.qf
-      },
-      {
-        label:'Demis',
-        teams:[[0,1],[2,3]].map(([a,b]) => [fp.qf[a], fp.qf[b]]),
-        picks:fp.sf,
-        actual:REAL.sf
-      },
-      {
-        label:'Finale',
-        teams:[[fp.sf[0], fp.sf[1]]],
-        picks:[fp.champion],
-        actual:[REAL.champion]
-      }
+      {label:'16es',teams:MATCHES_16.map(m => [m[0],m[1]]),picks:fp.r16,actual:REAL.r16},
+      {label:'8es',teams:[[0,1],[2,3],[4,5],[6,7],[8,9],[10,11],[12,13],[14,15]].map(([a,b]) => [fp.r16[a],fp.r16[b]]),picks:fp.r8,actual:REAL.r8},
+      {label:'Quarts',teams:[[0,1],[2,3],[4,5],[6,7]].map(([a,b]) => [fp.r8[a],fp.r8[b]]),picks:fp.qf,actual:REAL.qf},
+      {label:'Demis',teams:[[0,1],[2,3]].map(([a,b]) => [fp.qf[a],fp.qf[b]]),picks:fp.sf,actual:REAL.sf},
+      {label:'Finale',teams:[[fp.sf[0],fp.sf[1]]],picks:[fp.champion],actual:[REAL.champion]}
     ];
 
-    let championClass = 'fb-picked';
-    let championMark = '•';
-    let championReplacement = '';
+    let championClass='fb-picked', championMark='•', championReplacement='';
     if (REAL.champion) {
-      if (fp.champion === REAL.champion) {
-        championClass = 'good';
-        championMark = '✅';
-      } else {
-        championClass = 'out';
-        championMark = '';
-        championReplacement = `<span class="fb-replacement">${withFlag(REAL.champion)}</span>`;
-      }
-    } else if (ELIMINATED.has(fp.champion)) {
-      championClass = 'out';
-      championMark = '';
-    }
+      if (fp.champion===REAL.champion) { championClass='good'; championMark='✅'; }
+      else { championClass='out'; championMark=''; championReplacement=`<span class="fb-replacement">${withFlag(REAL.champion)}</span>`; }
+    } else if (ELIMINATED.has(fp.champion)) { championClass='out'; championMark=''; }
 
-    target.innerHTML = `<div class="ux-bracket-head">
-      <div class="ux-bracket-name">Pronostic de ${player}</div>
+    target.innerHTML=`<div class="ux-bracket-head">
+      <div>
+        <div class="ux-bracket-name">Pronostic de ${player}</div>
+        <div class="fb-alive-count">🟢 <b>${alive.length}</b> ${aliveLabel}</div>
+      </div>
       <div class="ux-bracket-legend">
         <div class="ux-legend-line"><span class="ux-swatch good"></span> Vert ✅ : bon pronostic</div>
         <div class="ux-legend-line"><span class="ux-swatch out"></span> Gris rayé : pronostic éliminé</div>
@@ -116,7 +102,7 @@
       </div>
     </div>
     <div class="ux-tree-scroll"><div class="ux-tree">
-      ${rounds.map(round => `<div class="ux-col"><div class="ux-col-title">${round.label}</div><div class="ux-col-body">${round.teams.map((teams,i) => matchCard(teams, round.picks[i], round.actual[i])).join('')}</div></div>`).join('')}
+      ${rounds.map(round=>`<div class="ux-col"><div class="ux-col-title">${round.label}</div><div class="ux-col-body">${round.teams.map((teams,i)=>matchCard(teams,round.picks[i],round.actual[i])).join('')}</div></div>`).join('')}
       <div class="ux-col"><div class="ux-col-title">Champion</div><div class="ux-col-body"><div class="ux-champion ${championClass}">🏆<br>${withFlag(fp.champion)} ${championMark}${championReplacement}</div></div></div>
     </div></div>`;
   }
@@ -126,34 +112,34 @@
     if (!player && previous) return previous(player);
     renderTree(player);
   };
+  window.refreshParticipantBracket = function() {
+    if (currentPlayer) renderTree(currentPlayer);
+  };
 
   async function openAdmin() {
-    let current = {updatedAt:null,r8:{},qf:{},sf:{},final:{}};
+    let current={updatedAt:null,r8:{},qf:{},sf:{},final:{}};
     try {
-      const response = await fetch('./results.json?t=' + Date.now(), {cache:'no-store'});
-      if (response.ok) current = await response.json();
+      const response=await fetch('./results.json?t='+Date.now(),{cache:'no-store'});
+      if (response.ok) current=await response.json();
     } catch (error) { console.warn(error); }
-    current.r8 = current.r8 || {};
-    current.qf = current.qf || {};
-    current.sf = current.sf || {};
-    current.final = current.final || {};
+    current.r8=current.r8||{}; current.qf=current.qf||{}; current.sf=current.sf||{}; current.final=current.final||{};
 
-    const remaining = [
-      {index:6, teamA:'Argentine', teamB:'Égypte'},
-      {index:7, teamA:'Suisse', teamB:'Colombie'}
-    ].filter(m => !current.r8[String(m.index)]);
+    const remaining=[
+      {index:6,teamA:'Argentine',teamB:'Égypte'},
+      {index:7,teamA:'Suisse',teamB:'Colombie'}
+    ].filter(m=>!current.r8[String(m.index)]);
 
-    const overlay = document.createElement('div');
-    overlay.className = 'fb-admin-overlay';
-    overlay.innerHTML = `<div class="fb-admin-panel">
+    const overlay=document.createElement('div');
+    overlay.className='fb-admin-overlay';
+    overlay.innerHTML=`<div class="fb-admin-panel">
       <div class="fb-admin-head"><h2>⚙️ Mode administrateur</h2><button class="fb-admin-close">×</button></div>
       <div class="fb-admin-card">
         <div class="fb-admin-note">Saisis le résultat ici. L'application prépare automatiquement la mise à jour publique.</div>
         <label>Match restant</label>
-        <select id="fbAdminMatch">${remaining.length ? remaining.map((m,i) => `<option value="${i}">${m.teamA} — ${m.teamB}</option>`).join('') : '<option>Aucun match restant</option>'}</select>
+        <select id="fbAdminMatch">${remaining.length?remaining.map((m,i)=>`<option value="${i}">${m.teamA} — ${m.teamB}</option>`).join(''):'<option>Aucun match restant</option>'}</select>
         <label>Score</label>
-        <input id="fbAdminScore" inputmode="numeric" placeholder="Exemple : 2-1" ${remaining.length ? '' : 'disabled'}>
-        <button id="fbAdminPrepare" class="fb-admin-action" ${remaining.length ? '' : 'disabled'}>Préparer la mise à jour</button>
+        <input id="fbAdminScore" inputmode="numeric" placeholder="Exemple : 2-1" ${remaining.length?'':'disabled'}>
+        <button id="fbAdminPrepare" class="fb-admin-action" ${remaining.length?'':'disabled'}>Préparer la mise à jour</button>
       </div>
       <div id="fbAdminResult" class="fb-admin-card" hidden>
         <div class="fb-admin-success">Résultat prêt à publier</div>
@@ -164,45 +150,41 @@
       </div>
     </div>`;
 
-    overlay.querySelector('.fb-admin-close').onclick = () => overlay.remove();
-    overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
+    overlay.querySelector('.fb-admin-close').onclick=()=>overlay.remove();
+    overlay.onclick=e=>{if(e.target===overlay) overlay.remove();};
     document.body.appendChild(overlay);
 
-    overlay.querySelector('#fbAdminPrepare')?.addEventListener('click', () => {
-      const match = remaining[Number(overlay.querySelector('#fbAdminMatch').value)];
-      const score = overlay.querySelector('#fbAdminScore').value.trim();
-      const parsed = score.match(/^(\d+)\s*[-–]\s*(\d+)$/);
-      if (!match || !parsed) return alert('Entre un score comme 2-1.');
-      const a = Number(parsed[1]);
-      const b = Number(parsed[2]);
-      if (a === b) return alert('Indique un score final avec un vainqueur.');
-      current.updatedAt = new Date().toISOString();
-      current.r8[String(match.index)] = {teamA:match.teamA,teamB:match.teamB,score,winner:a>b?match.teamA:match.teamB};
-      overlay.querySelector('#fbAdminJson').value = JSON.stringify(current, null, 2);
-      overlay.querySelector('#fbAdminResult').hidden = false;
+    overlay.querySelector('#fbAdminPrepare')?.addEventListener('click',()=>{
+      const match=remaining[Number(overlay.querySelector('#fbAdminMatch').value)];
+      const score=overlay.querySelector('#fbAdminScore').value.trim();
+      const parsed=score.match(/^(\d+)\s*[-–]\s*(\d+)$/);
+      if(!match||!parsed) return alert('Entre un score comme 2-1.');
+      const a=Number(parsed[1]), b=Number(parsed[2]);
+      if(a===b) return alert('Indique un score final avec un vainqueur.');
+      current.updatedAt=new Date().toISOString();
+      current.r8[String(match.index)]={teamA:match.teamA,teamB:match.teamB,score,winner:a>b?match.teamA:match.teamB};
+      overlay.querySelector('#fbAdminJson').value=JSON.stringify(current,null,2);
+      overlay.querySelector('#fbAdminResult').hidden=false;
     });
 
-    overlay.querySelector('#fbAdminCopy')?.addEventListener('click', async e => {
+    overlay.querySelector('#fbAdminCopy')?.addEventListener('click',async e=>{
       await navigator.clipboard.writeText(overlay.querySelector('#fbAdminJson').value);
-      e.currentTarget.textContent = '✓ Fichier copié';
+      e.currentTarget.textContent='✓ Fichier copié';
     });
 
-    overlay.querySelector('#fbAdminGithub')?.addEventListener('click', () => {
-      window.open('https://github.com/samihchaa-wq/Catalpronos-/edit/main/results.json', '_blank', 'noopener');
+    overlay.querySelector('#fbAdminGithub')?.addEventListener('click',()=>{
+      window.open('https://github.com/samihchaa-wq/Catalpronos-/edit/main/results.json','_blank','noopener');
     });
   }
 
   function addAdminAccess() {
-    const nav = document.querySelector('nav');
-    if (!nav || nav.querySelector('.fb-admin-btn')) return;
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'fb-admin-btn';
-    button.textContent = '⚙️ Admin';
-    button.onclick = openAdmin;
+    const nav=document.querySelector('nav');
+    if(!nav||nav.querySelector('.fb-admin-btn')) return;
+    const button=document.createElement('button');
+    button.type='button'; button.className='fb-admin-btn'; button.textContent='⚙️ Admin'; button.onclick=openAdmin;
     nav.appendChild(button);
   }
 
-  document.addEventListener('DOMContentLoaded', addAdminAccess);
-  setTimeout(addAdminAccess, 300);
+  document.addEventListener('DOMContentLoaded',addAdminAccess);
+  setTimeout(addAdminAccess,300);
 })();
