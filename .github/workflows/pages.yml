@@ -60,22 +60,6 @@ jobs:
           s = s.replace('const ROUND_PTS = {r16:1, r8:4, qf:8, sf:16};', 'const ROUND_PTS = {r16:1, r8:3, qf:5, sf:8};')
           s = s.replace('const CHAMP_PTS = 20;', 'const CHAMP_PTS = 12;')
           app.write_text(s, encoding='utf-8')
-
-          index = Path('_site/index.html')
-          h = index.read_text(encoding='utf-8')
-          for old in ('333','341','352','353','354','355','356','357','358','359'):
-              h = h.replace(f'./v3-ux.js?v={old}', './v3-ux.js?v=360')
-              h = h.replace(f'./calendar-votes-fix.js?v={old}', './calendar-votes-fix.js?v=360')
-              h = h.replace(f'./final-bracket-admin-fix.js?v={old}', './final-bracket-admin-fix.js?v=360')
-              h = h.replace(f'catalpronos%20app.html?v={old}', 'catalpronos%20app.html?v=360')
-          h = h.replace('<script src="./admin-workflow-link.js?v=358"></script>', '')
-          h = h.replace('<script src="./admin-workflow-link.js?v=359"></script>', '')
-          extras = '<script src="./admin-worker-publish.js?v=360"></script><script src="./results-sync.js?v=360"></script>'
-          if 'admin-worker-publish.js' not in h:
-              h = h.replace('</body>', extras + '</body>')
-          elif 'results-sync.js' not in h:
-              h = h.replace('</body>', '<script src="./results-sync.js?v=360"></script></body>')
-          index.write_text(h, encoding='utf-8')
           PY
 
           touch _site/.nojekyll
