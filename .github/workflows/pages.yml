@@ -36,6 +36,7 @@ jobs:
           rm -rf _site
           mkdir _site
           cp index.html _site/index.html
+          cp admin.html _site/admin.html
           cp "catalpronos app.html" "_site/catalpronos app.html"
           cp v3-patch.js _site/v3-patch.js
           cp v3-ux.js _site/v3-ux.js
