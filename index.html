@@ -20,7 +20,7 @@ html,body{margin:0;min-height:100%;background:#0A0F0D;color:#E8EDE6;font-family:
 <script>
 (async()=>{
   try{
-    const response=await fetch('./catalpronos%20app.html?v=333',{cache:'no-store'});
+    const response=await fetch('./catalpronos%20app.html?v=357',{cache:'no-store'});
     if(!response.ok) throw new Error('Fichier catalpronos app.html introuvable');
     let html=await response.text();
 
@@ -50,7 +50,14 @@ html,body{margin:0;min-height:100%;background:#0A0F0D;color:#E8EDE6;font-family:
     const jenny=/^(\s*"Jenny":\{r16:.*?champion:"France"\},\n)(\s*"Jenny":\{r16:.*?champion:"France"\},\n)/m;
     html=html.replace(jenny,'$1');
 
-    html=html.replace('</body>','<script src="./v3-patch.js?v=333"><\/script><script src="./v3-ux.js?v=333"><\/script></body>');
+    html=html.replace(
+      '</body>',
+      '<script src="./v3-patch.js?v=357"><\/script>'+
+      '<script src="./v3-ux.js?v=357"><\/script>'+
+      '<script src="./calendar-votes-fix.js?v=357"><\/script>'+
+      '<script src="./final-bracket-admin-fix.js?v=357"><\/script>'+
+      '</body>'
+    );
 
     document.open();
     document.write(html);
