@@ -40,6 +40,7 @@ jobs:
           cp "catalpronos app.html" "_site/catalpronos app.html"
           cp v3-patch.js _site/v3-patch.js
           cp v3-ux.js _site/v3-ux.js
+          cp calendar-votes-fix.js _site/calendar-votes-fix.js
           cp manifest.webmanifest _site/manifest.webmanifest
           cp sw.js _site/sw.js
           cp icon.svg _site/icon.svg
@@ -47,12 +48,19 @@ jobs:
 
           python3 - <<'PY'
           from pathlib import Path
-          p = Path('_site/catalpronos app.html')
-          s = p.read_text(encoding='utf-8')
+
+          app = Path('_site/catalpronos app.html')
+          s = app.read_text(encoding='utf-8')
           s = s.replace('r8: ["France","Maroc",null,null,null,null,null,null],   // 8es par index bracket', 'r8: ["1-0","0-3","0-1","1-4","1-2","2-3",null,null],   // scores par index bracket')
           s = s.replace('r8:  ["France","Maroc",null,null,null,null,null,null],', 'r8:  ["France","Maroc","Espagne","Belgique","Norvège","Angleterre",null,null],')
           s = s.replace('"m": 94, "date": "07.07", "time": "05h", "bracket8": 3, "score": null', '"m": 94, "date": "07.07", "time": "05h", "bracket8": 3, "score": "1-4"')
-          p.write_text(s, encoding='utf-8')
+          app.write_text(s, encoding='utf-8')
+
+          index = Path('_site/index.html')
+          h = index.read_text(encoding='utf-8')
+          h = h.replace('<script src="./v3-ux.js?v=333"><\/script></body>', '<script src="./v3-ux.js?v=341"><\/script><script src="./calendar-votes-fix.js?v=341"><\/script></body>')
+          h = h.replace("catalpronos%20app.html?v=333", "catalpronos%20app.html?v=341")
+          index.write_text(h, encoding='utf-8')
           PY
 
           touch _site/.nojekyll
