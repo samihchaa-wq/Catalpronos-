@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0A0F0D">
+<title>Administration Catalpronos</title>
+<style>
+:root{--bg:#0A0F0D;--surface:#111914;--surface2:#1A2420;--border:#2A3830;--text:#E8EDE6;--muted:#6B8070;--gold:#C9A84C;--green:#2D9B5A}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:18px}.wrap{max-width:560px;margin:auto}.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:12px}h1{font-size:22px;margin:0 0 4px;color:var(--gold)}p{color:var(--muted);font-size:13px;line-height:1.5}label{display:block;font-size:12px;font-weight:700;margin:12px 0 6px}select,input,button,textarea{width:100%;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);padding:12px;font-size:16px}button{background:var(--green);border:0;font-weight:800;margin-top:12px}button.secondary{background:var(--surface2);border:1px solid var(--border)}textarea{min-height:220px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}.steps{font-size:13px;line-height:1.6;color:var(--text)}.ok{color:var(--green);font-weight:800}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <h1>⚙️ Administration</h1>
+    <p>Prépare un score partagé. GitHub te demandera ensuite de valider le changement. Une fois validé, tous les collègues verront la mise à jour après le déploiement.</p>
+  </div>
+
+  <div class="card">
+    <label for="match">Match</label>
+    <select id="match">
+      <option value="0">Paraguay — France</option>
+      <option value="1">Canada — Maroc</option>
+      <option value="2">Portugal — Espagne</option>
+      <option value="3">États-Unis — Belgique</option>
+      <option value="4">Brésil — Norvège</option>
+      <option value="5">Mexique — Angleterre</option>
+      <option value="6">Argentine — Égypte</option>
+      <option value="7">Suisse — Colombie</option>
+    </select>
+
+    <label for="score">Score</label>
+    <input id="score" inputmode="numeric" placeholder="Exemple : 2-1">
+
+    <button id="prepare">Préparer la publication</button>
+  </div>
+
+  <div class="card" id="result" hidden>
+    <div class="ok">Score prêt</div>
+    <p class="steps">1. Appuie sur « Copier le fichier ».<br>2. Appuie sur « Ouvrir GitHub ».<br>3. Remplace tout le contenu par le texte copié.<br>4. Appuie sur « Commit changes ».</p>
+    <textarea id="json" readonly></textarea>
+    <button id="copy">Copier le fichier</button>
+    <button id="github" class="secondary">Ouvrir GitHub</button>
+  </div>
+</div>
+<script>
+const teams=[['Paraguay','France'],['Canada','Maroc'],['Portugal','Espagne'],['États-Unis','Belgique'],['Brésil','Norvège'],['Mexique','Angleterre'],['Argentine','Égypte'],['Suisse','Colombie']];
+let current=null;
+async function load(){
+  const r=await fetch('./results.json?t='+Date.now(),{cache:'no-store'});
+  current=r.ok?await r.json():{updatedAt:null,r8:{}};
+}
+load();
+
+document.getElementById('prepare').onclick=async()=>{
+  if(!current) await load();
+  const index=Number(document.getElementById('match').value);
+  const score=document.getElementById('score').value.trim();
+  const m=score.match(/^(\d+)\s*[-–]\s*(\d+)$/);
+  if(!m)return alert('Entre un score comme 2-1.');
+  const a=Number(m[1]),b=Number(m[2]);
+  if(a===b)return alert('Pour un match nul, indique le vainqueur manuellement dans le fichier.');
+  const [teamA,teamB]=teams[index];
+  const winner=a>b?teamA:teamB;
+  current.updatedAt=new Date().toISOString();
+  current.r8=current.r8||{};
+  current.r8[String(index)]={teamA,teamB,score,winner};
+  document.getElementById('json').value=JSON.stringify(current,null,2);
+  document.getElementById('result').hidden=false;
+  document.getElementById('result').scrollIntoView({behavior:'smooth'});
+};
+
+document.getElementById('copy').onclick=async()=>{
+  await navigator.clipboard.writeText(document.getElementById('json').value);
+  document.getElementById('copy').textContent='✓ Copié';
+};
+
+document.getElementById('github').onclick=()=>{
+  location.href='https://github.com/samihchaa-wq/Catalpronos-/edit/main/results.json';
+};
+</script>
+</body>
+</html>
