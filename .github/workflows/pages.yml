@@ -2,7 +2,8 @@ name: Déployer Catalpronos
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -11,25 +12,29 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
-  cancel-in-progress: true
+  group: github-pages
+  cancel-in-progress: false
 
 jobs:
-  deploy:
+  build-and-deploy:
+    runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
+
     steps:
       - name: Récupérer le dépôt
         uses: actions/checkout@v4
 
-      - name: Configurer Pages
+      - name: Configurer GitHub Pages
         uses: actions/configure-pages@v5
 
-      - name: Préparer le site
+      - name: Préparer l’application
+        shell: bash
         run: |
-          mkdir -p _site
+          set -e
+          rm -rf _site
+          mkdir _site
           cp index.html _site/index.html
           cp "catalpronos app.html" "_site/catalpronos app.html"
           cp v3-patch.js _site/v3-patch.js
@@ -38,11 +43,11 @@ jobs:
           cp icon.svg _site/icon.svg
           touch _site/.nojekyll
 
-      - name: Envoyer l’artefact
+      - name: Envoyer le site
         uses: actions/upload-pages-artifact@v3
         with:
-          path: _site
+          path: ./_site
 
-      - name: Déployer
+      - name: Publier le site
         id: deployment
         uses: actions/deploy-pages@v4
