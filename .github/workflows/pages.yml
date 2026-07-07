@@ -64,6 +64,8 @@ jobs:
           index = Path('_site/index.html')
           h = index.read_text(encoding='utf-8')
           h = h.replace('./calendar-votes-fix.js?v=361', './calendar-votes-fix.js?v=362')
+          h = h.replace('./final-bracket-admin-fix.js?v=361', './final-bracket-admin-fix.js?v=363')
+          h = h.replace('./final-bracket-admin-fix.js?v=362', './final-bracket-admin-fix.js?v=363')
           index.write_text(h, encoding='utf-8')
           PY
 
