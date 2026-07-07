@@ -12,19 +12,13 @@
 <body>
 <div class="wrap">
   <div class="card">
-    <h1>⚙️ Administration</h1>
-    <p>Prépare un score partagé. GitHub te demandera ensuite de valider le changement. Une fois validé, tous les collègues verront la mise à jour après le déploiement.</p>
+    <h1>⚙️ Matchs restants</h1>
+    <p>Les matchs déjà terminés ont été retirés. Tu peux maintenant saisir uniquement les deux rencontres restantes des huitièmes.</p>
   </div>
 
   <div class="card">
     <label for="match">Match</label>
     <select id="match">
-      <option value="0">Paraguay — France</option>
-      <option value="1">Canada — Maroc</option>
-      <option value="2">Portugal — Espagne</option>
-      <option value="3">États-Unis — Belgique</option>
-      <option value="4">Brésil — Norvège</option>
-      <option value="5">Mexique — Angleterre</option>
       <option value="6">Argentine — Égypte</option>
       <option value="7">Suisse — Colombie</option>
     </select>
@@ -44,11 +38,11 @@
   </div>
 </div>
 <script>
-const teams=[['Paraguay','France'],['Canada','Maroc'],['Portugal','Espagne'],['États-Unis','Belgique'],['Brésil','Norvège'],['Mexique','Angleterre'],['Argentine','Égypte'],['Suisse','Colombie']];
+const teams={6:['Argentine','Égypte'],7:['Suisse','Colombie']};
 let current=null;
 async function load(){
   const r=await fetch('./results.json?t='+Date.now(),{cache:'no-store'});
-  current=r.ok?await r.json():{updatedAt:null,r8:{}};
+  current=r.ok?await r.json():{updatedAt:null,r8:{},qf:{},sf:{},final:{}};
 }
 load();
 
@@ -60,11 +54,14 @@ document.getElementById('prepare').onclick=async()=>{
   if(!m)return alert('Entre un score comme 2-1.');
   const a=Number(m[1]),b=Number(m[2]);
   if(a===b)return alert('Pour un match nul, indique le vainqueur manuellement dans le fichier.');
-  const [teamA,teamB]=teams[index];
-  const winner=a>b?teamA:teamB;
+  const pair=teams[index];
+  const winner=a>b?pair[0]:pair[1];
   current.updatedAt=new Date().toISOString();
   current.r8=current.r8||{};
-  current.r8[String(index)]={teamA,teamB,score,winner};
+  current.qf=current.qf||{};
+  current.sf=current.sf||{};
+  current.final=current.final||{};
+  current.r8[String(index)]={teamA:pair[0],teamB:pair[1],score,winner};
   document.getElementById('json').value=JSON.stringify(current,null,2);
   document.getElementById('result').hidden=false;
   document.getElementById('result').scrollIntoView({behavior:'smooth'});
@@ -75,9 +72,7 @@ document.getElementById('copy').onclick=async()=>{
   document.getElementById('copy').textContent='✓ Copié';
 };
 
-document.getElementById('github').onclick=()=>{
-  location.href='https://github.com/samihchaa-wq/Catalpronos-/edit/main/results.json';
-};
+document.getElementById('github').onclick=()=>{location.href='https://github.com/samihchaa-wq/Catalpronos-/edit/main/results.json';};
 </script>
 </body>
 </html>
