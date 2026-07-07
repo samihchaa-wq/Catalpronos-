@@ -45,6 +45,7 @@ jobs:
           cp admin-worker-publish.js _site/admin-worker-publish.js
           cp results-sync.js _site/results-sync.js
           cp participant-stats.js _site/participant-stats.js
+          cp calendar-times-fix.js _site/calendar-times-fix.js
           cp manifest.webmanifest _site/manifest.webmanifest
           cp sw.js _site/sw.js
           cp icon.svg _site/icon.svg
