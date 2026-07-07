@@ -1,12 +1,48 @@
 {
-  "updatedAt": "2026-07-07T00:00:00.000Z",
+  "updatedAt": "2026-07-07T18:08:47.014Z",
   "r8": {
-    "0": {"teamA":"Paraguay","teamB":"France","score":"0-1","winner":"France"},
-    "1": {"teamA":"Canada","teamB":"Maroc","score":"0-3","winner":"Maroc"},
-    "2": {"teamA":"Portugal","teamB":"Espagne","score":"0-1","winner":"Espagne"},
-    "3": {"teamA":"États-Unis","teamB":"Belgique","score":"1-4","winner":"Belgique"},
-    "4": {"teamA":"Brésil","teamB":"Norvège","score":"1-2","winner":"Norvège"},
-    "5": {"teamA":"Mexique","teamB":"Angleterre","score":"2-3","winner":"Angleterre"}
+    "0": {
+      "teamA": "Paraguay",
+      "teamB": "France",
+      "score": "0-1",
+      "winner": "France"
+    },
+    "1": {
+      "teamA": "Canada",
+      "teamB": "Maroc",
+      "score": "0-3",
+      "winner": "Maroc"
+    },
+    "2": {
+      "teamA": "Portugal",
+      "teamB": "Espagne",
+      "score": "0-1",
+      "winner": "Espagne"
+    },
+    "3": {
+      "teamA": "États-Unis",
+      "teamB": "Belgique",
+      "score": "1-4",
+      "winner": "Belgique"
+    },
+    "4": {
+      "teamA": "Brésil",
+      "teamB": "Norvège",
+      "score": "1-2",
+      "winner": "Norvège"
+    },
+    "5": {
+      "teamA": "Mexique",
+      "teamB": "Angleterre",
+      "score": "2-3",
+      "winner": "Angleterre"
+    },
+    "6": {
+      "teamA": "Argentine",
+      "teamB": "Égypte",
+      "score": "3-2",
+      "winner": "Argentine"
+    }
   },
   "qf": {},
   "sf": {},
