@@ -1,9 +1,10 @@
-const CACHE_NAME = 'catalpronos-v3-2';
+const CACHE_NAME = 'catalpronos-v3-4';
 const APP_SHELL = [
   './',
   './index.html',
   './catalpronos%20app.html',
   './v3-patch.js',
+  './v3-ux.js',
   './manifest.webmanifest',
   './icon.svg'
 ];
