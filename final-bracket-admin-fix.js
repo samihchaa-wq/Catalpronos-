@@ -1,11 +1,11 @@
-/* Catalpronos — brackets lisibles + mode admin intégré */
+/* Catalpronos — brackets joueurs figés + mode admin intégré */
 (() => {
   'use strict';
 
   const style = document.createElement('style');
   style.textContent = `
-    .fb-replacement{display:inline;margin-left:6px;font-size:10px;color:var(--gold);text-decoration:none;font-weight:800;white-space:nowrap}
-    .fb-replacement::before{content:'→ ';color:var(--gold)}
+    .fb-replacement{display:block;margin-top:3px;font-size:10px;color:var(--gold);text-decoration:none;font-weight:800;white-space:normal}
+    .fb-replacement::before{content:'Qualifié réel : ';color:var(--muted);font-weight:600}
     .fb-admin-btn{flex:0 0 auto;padding:12px 16px;background:none;border:0;color:var(--gold);font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;cursor:pointer;border-bottom:2px solid transparent}
     .fb-admin-btn:hover{border-bottom-color:var(--gold)}
     .fb-admin-overlay{position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:10050;display:flex;align-items:flex-end;justify-content:center}
@@ -22,26 +22,34 @@
     .fb-admin-note{font-size:12px;color:var(--muted);line-height:1.5}
     .fb-admin-success{color:var(--correct);font-weight:800;margin-bottom:6px}
     .ux-team.fb-neutral{color:var(--text);background:var(--surface)}
+    .ux-team.fb-picked{color:var(--gold);background:rgba(201,168,76,.08);font-weight:800}
   `;
   document.head.appendChild(style);
 
-  function slotState(predictedTeam, realTeam) {
-    if (!predictedTeam) return { cls:'fb-neutral', mark:'', replacement:'' };
-    if (!realTeam) return { cls:'fb-neutral', mark:'', replacement:'' };
-    if (predictedTeam === realTeam) return { cls:'good', mark:'✅', replacement:'' };
-    return { cls:'out', mark:'', replacement:realTeam };
+  function teamRow(team, pick, actual) {
+    if (!team) return `<div class="ux-team fb-neutral"><span>À venir</span><span></span></div>`;
+
+    const isPick = team === pick;
+    const isEliminated = ELIMINATED.has(team);
+
+    if (isPick && actual) {
+      if (pick === actual) {
+        return `<div class="ux-team good"><span>${withFlag(team)}</span><span class="ux-mark">✅</span></div>`;
+      }
+      return `<div class="ux-team out"><span>${withFlag(team)}<span class="fb-replacement">${withFlag(actual)}</span></span><span></span></div>`;
+    }
+
+    if (isPick && !actual) {
+      if (isEliminated) return `<div class="ux-team out"><span>${withFlag(team)}</span><span></span></div>`;
+      return `<div class="ux-team fb-picked"><span>${withFlag(team)}</span><span class="ux-mark">•</span></div>`;
+    }
+
+    if (isEliminated) return `<div class="ux-team out"><span>${withFlag(team)}</span><span></span></div>`;
+    return `<div class="ux-team fb-neutral"><span>${withFlag(team)}</span><span></span></div>`;
   }
 
-  function slotRow(predictedTeam, realTeam) {
-    const state = slotState(predictedTeam, realTeam);
-    const replacement = state.replacement
-      ? `<span class="fb-replacement">${withFlag(state.replacement)}</span>`
-      : '';
-    return `<div class="ux-team ${state.cls}"><span>${predictedTeam ? withFlag(predictedTeam) : 'À venir'}${replacement}</span><span class="ux-mark">${state.mark}</span></div>`;
-  }
-
-  function matchCard(predictedTeams, realTeams) {
-    return `<div class="ux-match">${slotRow(predictedTeams[0], realTeams[0])}${slotRow(predictedTeams[1], realTeams[1])}</div>`;
+  function matchCard(teams, pick, actual) {
+    return `<div class="ux-match">${teamRow(teams[0], pick, actual)}${teamRow(teams[1], pick, actual)}</div>`;
   }
 
   function renderTree(player) {
@@ -49,40 +57,67 @@
     const fp = FINALS_PRONOS[player];
     if (!target || !fp) return;
 
-    const p16 = MATCHES_16.map(m => [m[0], m[1]]);
-    const p8 = [[0,1],[2,3],[4,5],[6,7],[8,9],[10,11],[12,13],[14,15]].map(([a,b]) => [fp.r16[a], fp.r16[b]]);
-    const pQ = [[0,1],[2,3],[4,5],[6,7]].map(([a,b]) => [fp.r8[a], fp.r8[b]]);
-    const pS = [[0,1],[2,3]].map(([a,b]) => [fp.qf[a], fp.qf[b]]);
-    const pF = [[fp.sf[0], fp.sf[1]]];
-
-    const r16 = MATCHES_16.map(m => [m[0], m[1]]);
-    const r8 = [[0,1],[2,3],[4,5],[6,7],[8,9],[10,11],[12,13],[14,15]].map(([a,b]) => [REAL.r16[a], REAL.r16[b]]);
-    const rQ = [[0,1],[2,3],[4,5],[6,7]].map(([a,b]) => [REAL.r8[a], REAL.r8[b]]);
-    const rS = [[0,1],[2,3]].map(([a,b]) => [REAL.qf[a], REAL.qf[b]]);
-    const rF = [[REAL.sf[0], REAL.sf[1]]];
-
     const rounds = [
-      {label:'16es', predicted:p16, real:r16},
-      {label:'8es', predicted:p8, real:r8},
-      {label:'Quarts', predicted:pQ, real:rQ},
-      {label:'Demis', predicted:pS, real:rS},
-      {label:'Finale', predicted:pF, real:rF}
+      {
+        label:'16es',
+        teams:MATCHES_16.map(m => [m[0], m[1]]),
+        picks:fp.r16,
+        actual:REAL.r16
+      },
+      {
+        label:'8es',
+        teams:[[0,1],[2,3],[4,5],[6,7],[8,9],[10,11],[12,13],[14,15]].map(([a,b]) => [fp.r16[a], fp.r16[b]]),
+        picks:fp.r8,
+        actual:REAL.r8
+      },
+      {
+        label:'Quarts',
+        teams:[[0,1],[2,3],[4,5],[6,7]].map(([a,b]) => [fp.r8[a], fp.r8[b]]),
+        picks:fp.qf,
+        actual:REAL.qf
+      },
+      {
+        label:'Demis',
+        teams:[[0,1],[2,3]].map(([a,b]) => [fp.qf[a], fp.qf[b]]),
+        picks:fp.sf,
+        actual:REAL.sf
+      },
+      {
+        label:'Finale',
+        teams:[[fp.sf[0], fp.sf[1]]],
+        picks:[fp.champion],
+        actual:[REAL.champion]
+      }
     ];
 
-    const champion = slotState(fp.champion, REAL.champion);
-    const championReplacement = champion.replacement
-      ? `<span class="fb-replacement">${withFlag(champion.replacement)}</span>` : '';
+    let championClass = 'fb-picked';
+    let championMark = '•';
+    let championReplacement = '';
+    if (REAL.champion) {
+      if (fp.champion === REAL.champion) {
+        championClass = 'good';
+        championMark = '✅';
+      } else {
+        championClass = 'out';
+        championMark = '';
+        championReplacement = `<span class="fb-replacement">${withFlag(REAL.champion)}</span>`;
+      }
+    } else if (ELIMINATED.has(fp.champion)) {
+      championClass = 'out';
+      championMark = '';
+    }
 
     target.innerHTML = `<div class="ux-bracket-head">
       <div class="ux-bracket-name">Pronostic de ${player}</div>
       <div class="ux-bracket-legend">
-        <div class="ux-legend-line"><span class="ux-swatch good"></span> Vert ✅ : équipe bien pronostiquée à ce tour</div>
-        <div class="ux-legend-line"><span class="ux-swatch out"></span> Gris rayé → vrai remplaçant affiché à côté</div>
+        <div class="ux-legend-line"><span class="ux-swatch good"></span> Vert ✅ : bon pronostic</div>
+        <div class="ux-legend-line"><span class="ux-swatch out"></span> Gris rayé : pronostic éliminé</div>
+        <div class="ux-legend-line"><span class="ux-swatch missed"></span> Sous le choix rayé : qualifié réel</div>
       </div>
     </div>
     <div class="ux-tree-scroll"><div class="ux-tree">
-      ${rounds.map(round => `<div class="ux-col"><div class="ux-col-title">${round.label}</div><div class="ux-col-body">${round.predicted.map((teams,i) => matchCard(teams, round.real[i] || [null,null])).join('')}</div></div>`).join('')}
-      <div class="ux-col"><div class="ux-col-title">Champion</div><div class="ux-col-body"><div class="ux-champion ${champion.cls}">🏆<br>${withFlag(fp.champion)} ${champion.mark}${championReplacement}</div></div></div>
+      ${rounds.map(round => `<div class="ux-col"><div class="ux-col-title">${round.label}</div><div class="ux-col-body">${round.teams.map((teams,i) => matchCard(teams, round.picks[i], round.actual[i])).join('')}</div></div>`).join('')}
+      <div class="ux-col"><div class="ux-col-title">Champion</div><div class="ux-col-body"><div class="ux-champion ${championClass}">🏆<br>${withFlag(fp.champion)} ${championMark}${championReplacement}</div></div></div>
     </div></div>`;
   }
 
