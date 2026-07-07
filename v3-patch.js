@@ -1,9 +1,12 @@
-/* Catalpronos V3 — couche de compatibilité et persistance */
+/* Catalpronos V3 — saisie des scores dans le calendrier */
 (() => {
   'use strict';
 
-  const VERSION = '3.0.0';
+  const VERSION = '3.1.0';
   const STORAGE_KEY = 'catalpronos-results-v3';
+  const ADMIN_SESSION_KEY = 'catalpronos-admin-session';
+
+  const roundSizes = { r16:16, r8:8, qf:4, sf:2 };
 
   function cloneResults(source) {
     return {
@@ -15,12 +18,23 @@
     };
   }
 
+  function cloneScores() {
+    return {
+      r16: CAL_R16.map(m => m.score ?? null),
+      r8: [...SCORES.r8],
+      qf: [...SCORES.qf],
+      sf: [...SCORES.sf],
+      final: SCORES.final ?? null
+    };
+  }
+
   function savePersistentResults() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
         version: VERSION,
         updatedAt: new Date().toISOString(),
-        results: cloneResults(REAL)
+        results: cloneResults(REAL),
+        scores: cloneScores()
       }));
       return true;
     } catch (error) {
@@ -35,12 +49,24 @@
       if (!raw) return false;
       const parsed = JSON.parse(raw);
       if (!parsed?.results) return false;
+
       const saved = cloneResults(parsed.results);
-      REAL.r16.splice(0, REAL.r16.length, ...saved.r16);
-      REAL.r8.splice(0, REAL.r8.length, ...saved.r8);
-      REAL.qf.splice(0, REAL.qf.length, ...saved.qf);
-      REAL.sf.splice(0, REAL.sf.length, ...saved.sf);
+      for (const key of Object.keys(roundSizes)) {
+        REAL[key].splice(0, REAL[key].length, ...saved[key]);
+      }
       REAL.champion = saved.champion;
+
+      if (parsed.scores) {
+        (parsed.scores.r16 || []).forEach((score, i) => {
+          if (CAL_R16[i]) CAL_R16[i].score = score;
+        });
+        for (const key of ['r8','qf','sf']) {
+          if (Array.isArray(parsed.scores[key])) {
+            SCORES[key].splice(0, SCORES[key].length, ...parsed.scores[key]);
+          }
+        }
+        SCORES.final = parsed.scores.final ?? null;
+      }
       return true;
     } catch (error) {
       console.error('[Catalpronos V3] Chargement impossible', error);
@@ -60,18 +86,193 @@
     }
   }
 
+  function isAdmin() {
+    return sessionStorage.getItem(ADMIN_SESSION_KEY) === '1';
+  }
+
+  function setAdmin(value) {
+    if (value) sessionStorage.setItem(ADMIN_SESSION_KEY, '1');
+    else sessionStorage.removeItem(ADMIN_SESSION_KEY);
+  }
+
+  function parseScore(text) {
+    const value = String(text || '').trim();
+    const main = value.match(/^(\d+)\s*[-–]\s*(\d+)/);
+    if (!main) return null;
+    const a = Number(main[1]);
+    const b = Number(main[2]);
+    let winnerSide = a > b ? 0 : b > a ? 1 : null;
+
+    if (winnerSide === null) {
+      const penalties = value.match(/\((\d+)\s*[-–]\s*(\d+)\s*(?:tab|t\.a\.b\.?|pen)?\)/i);
+      if (penalties) {
+        const pa = Number(penalties[1]);
+        const pb = Number(penalties[2]);
+        winnerSide = pa > pb ? 0 : pb > pa ? 1 : null;
+      }
+    }
+
+    return { text:value, a, b, winnerSide };
+  }
+
+  function getTeams(round, index) {
+    if (round === 'r16') return MATCHES_16[index];
+    if (round === 'r8') {
+      const pairs = [[0,1],[2,3],[4,5],[6,7],[8,9],[10,11],[12,13],[14,15]];
+      const [a,b] = pairs[index];
+      return [REAL.r16[a], REAL.r16[b]];
+    }
+    if (round === 'qf') {
+      const pairs = [[0,1],[2,3],[4,5],[6,7]];
+      const [a,b] = pairs[index];
+      return [REAL.r8[a], REAL.r8[b]];
+    }
+    if (round === 'sf') {
+      const pairs = [[0,1],[2,3]];
+      const [a,b] = pairs[index];
+      return [REAL.qf[a], REAL.qf[b]];
+    }
+    return [REAL.sf[0], REAL.sf[1]];
+  }
+
+  function getScore(round, index) {
+    if (round === 'r16') return CAL_R16[index]?.score || '';
+    if (round === 'final') return SCORES.final || '';
+    return SCORES[round]?.[index] || '';
+  }
+
+  function applyScore(round, index, value) {
+    const teams = getTeams(round, index);
+    if (!teams[0] || !teams[1]) {
+      alert('Les deux équipes de ce match ne sont pas encore connues.');
+      return false;
+    }
+
+    const parsed = parseScore(value);
+    if (!parsed) {
+      alert('Entre un score au format 2-1. Pour un nul après prolongation, ajoute les tirs au but : 1-1 (4-3 tab).');
+      return false;
+    }
+    if (parsed.winnerSide === null) {
+      alert('Pour un score nul, précise les tirs au but, par exemple : 1-1 (4-3 tab).');
+      return false;
+    }
+
+    const winner = teams[parsed.winnerSide];
+    if (round === 'r16') {
+      REAL.r16[index] = winner;
+      CAL_R16[index].score = parsed.text;
+    } else if (round === 'final') {
+      REAL.champion = winner;
+      SCORES.final = parsed.text;
+    } else {
+      REAL[round][index] = winner;
+      SCORES[round][index] = parsed.text;
+    }
+
+    savePersistentResults();
+    refreshAll();
+    return true;
+  }
+
+  function clearScore(round, index) {
+    if (!confirm('Effacer ce résultat ? Les tours suivants dépendants resteront inchangés tant que tu ne les modifies pas.')) return;
+    if (round === 'r16') {
+      REAL.r16[index] = null;
+      CAL_R16[index].score = null;
+    } else if (round === 'final') {
+      REAL.champion = null;
+      SCORES.final = null;
+    } else {
+      REAL[round][index] = null;
+      SCORES[round][index] = null;
+    }
+    savePersistentResults();
+    refreshAll();
+  }
+
+  function scoreMap() {
+    const list = [];
+    CAL_R16.forEach((m, i) => list.push({ round:'r16', index:i }));
+    CAL_R8.forEach(m => list.push({ round:'r8', index:m.bracket8 }));
+    CAL_QF.forEach(m => list.push({ round:'qf', index:m.bracketQ }));
+    CAL_SF.forEach(m => list.push({ round:'sf', index:m.bracketS }));
+    list.push({ round:'final', index:0 });
+    return list;
+  }
+
+  function decorateCalendar() {
+    const container = document.getElementById('calendrier-content');
+    if (!container || container.dataset.v3Decorated === String(isAdmin())) return;
+    container.dataset.v3Decorated = String(isAdmin());
+
+    let toolbar = document.getElementById('calendarAdminToolbar');
+    if (!toolbar) {
+      toolbar = document.createElement('div');
+      toolbar.id = 'calendarAdminToolbar';
+      toolbar.style.cssText = 'display:flex;justify-content:flex-end;gap:8px;margin:0 0 12px';
+      container.prepend(toolbar);
+    }
+
+    if (isAdmin()) {
+      toolbar.innerHTML = '<button class="team-btn" id="calendarLogoutBtn" style="flex:0 0 auto;padding:7px 10px">🔒 Quitter le mode admin</button>';
+      document.getElementById('calendarLogoutBtn').onclick = () => { setAdmin(false); renderCalendrier(); };
+    } else {
+      toolbar.innerHTML = '<button class="team-btn" id="calendarLoginBtn" style="flex:0 0 auto;padding:7px 10px">⚙️ Mode admin</button>';
+      document.getElementById('calendarLoginBtn').onclick = () => {
+        const pw = prompt('Mot de passe administrateur');
+        if (pw === ADMIN_PW) {
+          setAdmin(true);
+          renderCalendrier();
+        } else if (pw !== null) {
+          alert('Mot de passe incorrect.');
+        }
+      };
+    }
+
+    if (!isAdmin()) return;
+
+    const refs = scoreMap();
+    const cards = [...container.querySelectorAll('.cal-match')];
+    cards.forEach((card, position) => {
+      const ref = refs[position];
+      if (!ref) return;
+      card.style.cursor = 'pointer';
+      card.title = 'Toucher pour modifier le score';
+      const edit = document.createElement('button');
+      edit.type = 'button';
+      edit.className = 'team-btn';
+      edit.textContent = '✏️';
+      edit.setAttribute('aria-label', 'Modifier le score');
+      edit.style.cssText = 'flex:0 0 38px;padding:7px;margin-left:4px';
+      const open = event => {
+        event?.stopPropagation();
+        const teams = getTeams(ref.round, ref.index);
+        const current = getScore(ref.round, ref.index);
+        const answer = prompt(`${teams[0] || '?'} — ${teams[1] || '?'}\nEntre le score :`, current);
+        if (answer === null) return;
+        if (answer.trim() === '') clearScore(ref.round, ref.index);
+        else applyScore(ref.round, ref.index, answer);
+      };
+      edit.onclick = open;
+      card.onclick = open;
+      card.appendChild(edit);
+    });
+  }
+
   function downloadBackup() {
     const payload = {
-      app: 'Les Catalpronos',
-      version: VERSION,
-      exportedAt: new Date().toISOString(),
-      results: cloneResults(REAL)
+      app:'Les Catalpronos',
+      version:VERSION,
+      exportedAt:new Date().toISOString(),
+      results:cloneResults(REAL),
+      scores:cloneScores()
     };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type:'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `catalpronos-sauvegarde-${new Date().toISOString().slice(0, 10)}.json`;
+    link.download = `catalpronos-sauvegarde-${new Date().toISOString().slice(0,10)}.json`;
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -79,25 +280,9 @@
   }
 
   function resetPersistentResults() {
-    if (!confirm('Effacer la sauvegarde locale des résultats et revenir aux données publiées ?')) return;
+    if (!confirm('Effacer la sauvegarde locale et revenir aux résultats publiés ?')) return;
     localStorage.removeItem(STORAGE_KEY);
     location.reload();
-  }
-
-  function addV3AdminTools() {
-    const screen = document.getElementById('adminScreen');
-    if (!screen || document.getElementById('v3AdminTools')) return;
-
-    const tools = document.createElement('div');
-    tools.id = 'v3AdminTools';
-    tools.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px';
-    tools.innerHTML = `
-      <button type="button" class="team-btn" id="v3BackupBtn">⬇️ Sauvegarder</button>
-      <button type="button" class="team-btn reset-btn" id="v3ResetBtn" style="width:auto;flex:auto">↺ Réinitialiser</button>
-    `;
-    screen.appendChild(tools);
-    document.getElementById('v3BackupBtn').addEventListener('click', downloadBackup);
-    document.getElementById('v3ResetBtn').addEventListener('click', resetPersistentResults);
   }
 
   function addVersionBadge() {
@@ -111,27 +296,27 @@
   }
 
   const restored = loadPersistentResults();
+  const originalRenderCalendrier = renderCalendrier;
+  renderCalendrier = function renderCalendrierV3() {
+    originalRenderCalendrier();
+    decorateCalendar();
+  };
 
-  if (typeof saveResults === 'function') {
-    const originalSaveResults = saveResults;
-    saveResults = function saveResultsV3() {
-      originalSaveResults();
-      savePersistentResults();
-      refreshAll();
-    };
-  }
+  const legacyAdminButton = document.querySelector('.admin-btn-float');
+  if (legacyAdminButton) legacyAdminButton.style.display = 'none';
 
   window.CatalpronosV3 = Object.freeze({
-    version: VERSION,
-    save: savePersistentResults,
-    backup: downloadBackup,
-    reset: resetPersistentResults,
-    refresh: refreshAll
+    version:VERSION,
+    save:savePersistentResults,
+    backup:downloadBackup,
+    reset:resetPersistentResults,
+    refresh:refreshAll
   });
 
   document.addEventListener('DOMContentLoaded', () => {
     addVersionBadge();
-    addV3AdminTools();
-    if (restored) refreshAll();
+    refreshAll();
   });
+
+  if (restored) refreshAll();
 })();
