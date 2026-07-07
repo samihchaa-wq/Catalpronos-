@@ -44,6 +44,17 @@
     return allFixtures().find(f => text.includes(f.teams[0]) && text.includes(f.teams[1])) || null;
   }
 
+  function voteState(pick, actual) {
+    if (!pick) return { cls:'ux-ko', label:'✗ aucun pronostic' };
+    if (actual) return pick === actual
+      ? { cls:'ux-ok', label:'✓ correct' }
+      : { cls:'ux-ko', label:'✗ faux' };
+    if (typeof ELIMINATED !== 'undefined' && ELIMINATED.has(pick)) {
+      return { cls:'ux-ko', label:'✗ faux · équipe éliminée' };
+    }
+    return { cls:'ux-wait', label:'⏳ en attente' };
+  }
+
   function showVotes(fixture) {
     const [teamA, teamB] = fixture.teams;
     const actual = actualFor(fixture.round, fixture.index);
@@ -63,9 +74,8 @@
         <div class="ux-count"><b>${withFlag(teamB)}</b><small>${countB} vote${countB > 1 ? 's' : ''}</small></div>
       </div>
       ${voters.map(v => {
-        const cls = actual ? (v.pick === actual ? 'ux-ok' : 'ux-ko') : 'ux-wait';
-        const state = actual ? (v.pick === actual ? '✓ correct' : '✗ faux') : '⏳ en attente';
-        return `<div class="ux-row"><span>${v.name}</span><span class="${cls}">${v.pick ? withFlag(v.pick) : '—'} · ${state}</span></div>`;
+        const state = voteState(v.pick, actual);
+        return `<div class="ux-row"><span>${v.name}</span><span class="${state.cls}">${v.pick ? withFlag(v.pick) : '—'} · ${state.label}</span></div>`;
       }).join('')}
     </div>`;
 
