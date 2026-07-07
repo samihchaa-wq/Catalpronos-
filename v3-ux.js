@@ -126,7 +126,7 @@
     if (!team || team === '?') return {cls:'pending', mark:''};
     if (actual) {
       if (team === actual && team === pick) return {cls:'good', mark:'✅'};
-      if (team === actual && team !== pick) return {cls:'missed', mark:'❎'};
+      if (team === actual && team !== pick) return {cls:'missed', mark:'✅'};
       return {cls:'out', mark:''};
     }
     if (ELIMINATED.has(team)) return {cls:'out', mark:''};
@@ -166,7 +166,7 @@
       <div class="ux-bracket-name">Pronostic de ${player}</div>
       <div class="ux-bracket-legend">
         <div class="ux-legend-line"><span class="ux-swatch good"></span> Vert ✅ : équipe pariée et qualifiée</div>
-        <div class="ux-legend-line"><span class="ux-swatch missed"></span> Jaune ❎ : équipe qualifiée mais non pariée</div>
+        <div class="ux-legend-line"><span class="ux-swatch missed"></span> Jaune ✅ : équipe qualifiée mais non pariée</div>
         <div class="ux-legend-line"><span class="ux-swatch out"></span> Gris rayé : équipe éliminée</div>
       </div>
     </div>
