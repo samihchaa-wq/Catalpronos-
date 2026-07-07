@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-07-07T18:08:47.014Z",
+  "updatedAt": "2026-07-07T22:52:40.181Z",
   "r8": {
     "0": {
       "teamA": "Paraguay",
@@ -42,6 +42,12 @@
       "teamB": "Égypte",
       "score": "3-2",
       "winner": "Argentine"
+    },
+    "7": {
+      "teamA": "Suisse",
+      "teamB": "Colombie",
+      "score": "1-1 (4-3)",
+      "winner": "Suisse"
     }
   },
   "qf": {},
