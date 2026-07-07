@@ -59,11 +59,11 @@ jobs:
 
           index = Path('_site/index.html')
           h = index.read_text(encoding='utf-8')
-          for old in ('333','341','352','353'):
-              h = h.replace(f'./v3-ux.js?v={old}', './v3-ux.js?v=354')
-              h = h.replace(f'./calendar-votes-fix.js?v={old}', './calendar-votes-fix.js?v=354')
-              h = h.replace(f'./final-bracket-admin-fix.js?v={old}', './final-bracket-admin-fix.js?v=354')
-              h = h.replace(f'catalpronos%20app.html?v={old}', 'catalpronos%20app.html?v=354')
+          for old in ('333','341','352','353','354'):
+              h = h.replace(f'./v3-ux.js?v={old}', './v3-ux.js?v=355')
+              h = h.replace(f'./calendar-votes-fix.js?v={old}', './calendar-votes-fix.js?v=355')
+              h = h.replace(f'./final-bracket-admin-fix.js?v={old}', './final-bracket-admin-fix.js?v=355')
+              h = h.replace(f'catalpronos%20app.html?v={old}', 'catalpronos%20app.html?v=355')
           index.write_text(h, encoding='utf-8')
           PY
 
