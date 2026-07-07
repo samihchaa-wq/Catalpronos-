@@ -1,4 +1,4 @@
-/* Catalpronos V3.3 — navigation et lisibilité */
+/* Catalpronos V3.4 — navigation, votes et brackets pronostiqués */
 (() => {
   'use strict';
 
@@ -13,14 +13,31 @@
     .ux-count{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px}.ux-count b{display:block;font-size:13px}.ux-count small{color:var(--muted)}
     .ux-row{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px}.ux-row:last-child{border-bottom:0}
     .ux-ok{color:var(--correct)}.ux-ko{color:#e57373}.ux-wait{color:var(--gold)}
-    .ux-simple{display:grid;gap:12px}
-    .ux-round{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px}
-    .ux-round h3{margin:0 0 9px;color:var(--gold);font-size:12px;text-transform:uppercase;letter-spacing:.08em}
-    .ux-pick{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:8px;border-radius:9px;margin-bottom:6px;background:var(--surface2);border:1px solid var(--border)}
-    .ux-pick:last-child{margin-bottom:0}.ux-pick b{font-size:12px}.ux-pick small{font-size:10px;color:var(--muted)}
-    .ux-pick.ok{border-color:var(--correct);background:var(--correct-bg)}.ux-pick.ko{border-color:var(--wrong);background:var(--wrong-bg)}.ux-pick.wait{border-color:var(--gold)}
-    .ux-pick.ok b{color:var(--correct)}.ux-pick.ko b{color:#e57373;text-decoration:line-through}.ux-pick.wait b{color:var(--gold)}
-    .ux-back{width:100%;margin-bottom:10px;padding:10px;border-radius:9px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-weight:700}
+
+    .ux-bracket-head{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px;margin:10px 0}
+    .ux-bracket-name{font-size:16px;font-weight:800;color:var(--text)}
+    .ux-bracket-legend{display:grid;grid-template-columns:1fr;gap:6px;margin-top:10px;font-size:11px;color:var(--muted)}
+    .ux-legend-line{display:flex;align-items:center;gap:7px}
+    .ux-swatch{width:12px;height:12px;border-radius:3px;display:inline-block;flex:0 0 auto}
+    .ux-swatch.good{background:var(--correct)}.ux-swatch.missed{background:var(--gold)}.ux-swatch.out{background:#66706a}
+
+    .ux-tree-scroll{overflow-x:auto;padding-bottom:8px;-webkit-overflow-scrolling:touch}
+    .ux-tree{display:flex;gap:12px;min-width:900px;align-items:stretch}
+    .ux-col{width:150px;flex:0 0 150px;display:flex;flex-direction:column}
+    .ux-col-title{text-align:center;color:var(--gold);font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px}
+    .ux-col-body{display:flex;flex-direction:column;justify-content:space-around;gap:8px;flex:1}
+    .ux-match{border:1px solid var(--border);border-radius:9px;overflow:hidden;background:var(--surface)}
+    .ux-team{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:7px 8px;font-size:11px;border-bottom:1px solid var(--border);min-height:31px}
+    .ux-team:last-child{border-bottom:0}
+    .ux-team.good{background:var(--correct-bg);color:var(--correct);font-weight:800}
+    .ux-team.missed{background:rgba(201,168,76,.14);color:var(--gold);font-weight:800}
+    .ux-team.out{color:var(--muted);text-decoration:line-through;opacity:.8}
+    .ux-team.pending{color:var(--text)}
+    .ux-mark{font-weight:900;flex:0 0 auto}
+    .ux-champion{border:1px solid var(--gold);border-radius:10px;padding:14px 8px;text-align:center;background:linear-gradient(160deg,rgba(201,168,76,.12),var(--surface))}
+    .ux-champion.good{border-color:var(--correct);background:var(--correct-bg);color:var(--correct)}
+    .ux-champion.missed{border-color:var(--gold);color:var(--gold)}
+    .ux-champion.out{border-color:var(--border);color:var(--muted);text-decoration:line-through}
   `;
   document.head.appendChild(style);
 
@@ -53,11 +70,11 @@
 
   function calendarRefs() {
     const refs = [];
-    CAL_R16.forEach((m, i) => refs.push({round:'r16', index:i, date:m.date, time:m.time}));
-    CAL_R8.forEach(m => refs.push({round:'r8', index:m.bracket8, date:m.date, time:m.time}));
-    CAL_QF.forEach(m => refs.push({round:'qf', index:m.bracketQ, date:m.date, time:m.time}));
-    CAL_SF.forEach(m => refs.push({round:'sf', index:m.bracketS, date:m.date, time:m.time}));
-    refs.push({round:'final', index:0, date:CAL_FINAL.date, time:CAL_FINAL.time});
+    CAL_R16.forEach((m, i) => refs.push({round:'r16', index:i}));
+    CAL_R8.forEach(m => refs.push({round:'r8', index:m.bracket8}));
+    CAL_QF.forEach(m => refs.push({round:'qf', index:m.bracketQ}));
+    CAL_SF.forEach(m => refs.push({round:'sf', index:m.bracketS}));
+    refs.push({round:'final', index:0});
     return refs;
   }
 
@@ -105,31 +122,64 @@
     });
   }
 
-  function statusFor(pick, actual) {
-    if (!pick) return 'wait';
-    if (actual) return pick === actual ? 'ok' : 'ko';
-    return ELIMINATED.has(pick) ? 'ko' : 'wait';
+  function teamState(team, pick, actual) {
+    if (!team || team === '?') return {cls:'pending', mark:''};
+    if (actual) {
+      if (team === actual && team === pick) return {cls:'good', mark:'✅'};
+      if (team === actual && team !== pick) return {cls:'missed', mark:'❎'};
+      return {cls:'out', mark:''};
+    }
+    if (ELIMINATED.has(team)) return {cls:'out', mark:''};
+    return {cls:'pending', mark:team === pick ? '•' : ''};
   }
 
-  function showSimpleBracket(player) {
+  function matchHtml(teamA, teamB, pick, actual) {
+    function row(team) {
+      const state = teamState(team, pick, actual);
+      return `<div class="ux-team ${state.cls}"><span>${team ? withFlag(team) : 'À venir'}</span><span class="ux-mark">${state.mark}</span></div>`;
+    }
+    return `<div class="ux-match">${row(teamA)}${row(teamB)}</div>`;
+  }
+
+  function renderPredictionTree(player) {
     const target = document.getElementById('finals-bracket-content');
     const fp = FINALS_PRONOS[player];
     if (!target || !fp) return;
-    const rounds = [['16es','r16',16],['8es','r8',8],['Quarts','qf',4],['Demis','sf',2],['Champion','final',1]];
-    target.innerHTML = `<button class="ux-back" onclick="document.getElementById('finals-part-select').value='';document.getElementById('finals-bracket-content').innerHTML=''">← Revenir au choix</button>
-      <div class="ux-simple">${rounds.map(([label,key,n]) => `<div class="ux-round"><h3>${label}</h3>${Array.from({length:n},(_,i) => {
-        const pick = key === 'final' ? fp.champion : fp[key]?.[i];
-        const actual = key === 'final' ? REAL.champion : REAL[key]?.[i];
-        const state = statusFor(pick, actual);
-        const note = actual ? `Réel : ${withFlag(actual)}` : state === 'ko' ? 'Équipe déjà éliminée' : 'Encore possible';
-        return `<div class="ux-pick ${state}"><div><b>${pick ? withFlag(pick) : '—'}</b><small>${note}</small></div><span>${state==='ok'?'✓':state==='ko'?'✗':'⏳'}</span></div>`;
-      }).join('')}</div>`).join('')}</div>`;
+
+    const m16 = MATCHES_16.map(m => [m[0], m[1]]);
+    const m8 = [[0,1],[2,3],[4,5],[6,7],[8,9],[10,11],[12,13],[14,15]].map(([a,b]) => [fp.r16[a], fp.r16[b]]);
+    const mQ = [[0,1],[2,3],[4,5],[6,7]].map(([a,b]) => [fp.r8[a], fp.r8[b]]);
+    const mS = [[0,1],[2,3]].map(([a,b]) => [fp.qf[a], fp.qf[b]]);
+    const mF = [fp.sf[0], fp.sf[1]];
+
+    const cols = [
+      {label:'16es', n:16, teams:m16, picks:fp.r16, actual:REAL.r16},
+      {label:'8es', n:8, teams:m8, picks:fp.r8, actual:REAL.r8},
+      {label:'Quarts', n:4, teams:mQ, picks:fp.qf, actual:REAL.qf},
+      {label:'Demis', n:2, teams:mS, picks:fp.sf, actual:REAL.sf},
+      {label:'Finale', n:1, teams:[mF], picks:[fp.champion], actual:[REAL.champion]}
+    ];
+
+    const champState = teamState(fp.champion, fp.champion, REAL.champion);
+
+    target.innerHTML = `<div class="ux-bracket-head">
+      <div class="ux-bracket-name">Pronostic de ${player}</div>
+      <div class="ux-bracket-legend">
+        <div class="ux-legend-line"><span class="ux-swatch good"></span> Vert ✅ : équipe pariée et qualifiée</div>
+        <div class="ux-legend-line"><span class="ux-swatch missed"></span> Jaune ❎ : équipe qualifiée mais non pariée</div>
+        <div class="ux-legend-line"><span class="ux-swatch out"></span> Gris rayé : équipe éliminée</div>
+      </div>
+    </div>
+    <div class="ux-tree-scroll"><div class="ux-tree">
+      ${cols.map(col => `<div class="ux-col"><div class="ux-col-title">${col.label}</div><div class="ux-col-body">${Array.from({length:col.n},(_,i) => matchHtml(col.teams[i][0], col.teams[i][1], col.picks[i], col.actual[i])).join('')}</div></div>`).join('')}
+      <div class="ux-col"><div class="ux-col-title">Champion</div><div class="ux-col-body"><div class="ux-champion ${champState.cls}">🏆<br>${withFlag(fp.champion)} ${champState.mark}</div></div></div>
+    </div></div>`;
   }
 
   const oldShowParticipantBracket = showParticipantBracket;
   showParticipantBracket = function(player) {
     if (!player) return oldShowParticipantBracket(player);
-    showSimpleBracket(player);
+    renderPredictionTree(player);
   };
 
   goToParticipant = function(player) {
