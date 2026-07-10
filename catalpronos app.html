@@ -819,6 +819,23 @@
   .lg-ok { color: var(--correct); }
   .lg-ko { color: #e57373; }
 
+  .pbracket-breakdown {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+  .pbracket-breakdown span {
+    font-size: 11px;
+    color: var(--muted);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 8px;
+  }
+  .pbracket-breakdown strong { color: var(--gold); font-weight: 700; }
+  .tree-col-pts { display: block; font-size: 9px; font-weight: 400; color: var(--muted); text-transform: none; letter-spacing: 0; }
+
   /* Horizontal scroll container */
   .tree-scroll {
     overflow-x: auto;
@@ -1112,7 +1129,7 @@
 <!-- ══════════════════════════════════════════ CLASSEMENT ══════════════════════════════════════ -->
 <div class="section active" id="classement">
   <div class="section-title">🏅 Classement général</div>
-  
+  <div id="bareme-content"></div>
   <div class="podium" id="podium"></div>
   <div class="ranking-list" id="ranking-list"></div>
 </div>
@@ -1142,6 +1159,7 @@
 <!-- ══════════════════════════════════════════ PRONOS FINALES ════════════════════════════════ -->
 <div class="section" id="pronos-finales">
   <div class="section-title">🎯 Pronostics — Phases finales</div>
+  <div id="bareme-content-finales"></div>
   <div id="finals-content"></div>
 </div>
 
@@ -1272,21 +1290,27 @@ const LATE_EXCLUSIONS = {
 };
 
 
-const ROUND_PTS = {r16:1, r8:4, qf:8, sf:16};
-const CHAMP_PTS = 20;
+// ════ BARÈME (seule source de vérité — tout l'affichage est dérivé de ces constantes) ════
+const GROUP_EXACT_PTS = 2;       // bonne équipe à la bonne place (1er ou 2e du groupe)
+const GROUP_QUALIFIED_PTS = 1;   // équipe qualifiée mais à la mauvaise place
+const THIRD_BEST_PTS = 2;        // bon "meilleur 3e" qualifié trouvé
+const THIRD_QUALIFIED_PTS = 1;   // l'équipe pronostiquée est qualifiée (1er/2e), mais pas via les meilleurs 3e
+const ROUND_PTS = {r16:1, r8:4, qf:8, sf:16}; // points par bon vainqueur pronostiqué, par tour
+const CHAMP_PTS = 20;             // bon champion du monde pronostiqué
+const ROUND_LABELS = {r16:'16es', r8:'8es', qf:'Quarts', sf:'Demies'};
 
 // ════ SCORING ════
 function scoreGroupPick(grp, pick, isFirst) {
   const g = GROUPS[grp];
-  if (isFirst && pick === g.first) return 2;
-  if (!isFirst && pick === g.second) return 2;
-  if (QUALIFIED.has(pick)) return 1;
+  if (isFirst && pick === g.first) return GROUP_EXACT_PTS;
+  if (!isFirst && pick === g.second) return GROUP_EXACT_PTS;
+  if (QUALIFIED.has(pick)) return GROUP_QUALIFIED_PTS;
   return 0;
 }
 function scoreThird(team) {
-  if (BEST_THIRDS.has(team)) return 2;
+  if (BEST_THIRDS.has(team)) return THIRD_BEST_PTS;
   for (const g of Object.values(GROUPS)) {
-    if (g.first === team || g.second === team) return 1;
+    if (g.first === team || g.second === team) return THIRD_QUALIFIED_PTS;
   }
   return 0;
 }
@@ -1299,21 +1323,47 @@ function computeGroupScore(p) {
   (THIRDS_PRONOS[p]||[]).forEach(t => s += scoreThird(t));
   return s;
 }
-function computeFinalsScore(p) {
-  const fp = FINALS_PRONOS[p]; if (!fp) return 0;
+// Détail tour par tour des points de la phase finale. computeFinalsScore() est dérivé
+// de ce détail pour garantir que le total affiché correspond toujours à la somme
+// des points montrés à l'écran (plus de calcul parallèle qui pourrait diverger).
+function computeFinalsBreakdown(p) {
+  const breakdown = {r16:0, r8:0, qf:0, sf:0, champ:0};
+  const fp = FINALS_PRONOS[p]; if (!fp) return breakdown;
   const excl = LATE_EXCLUSIONS[p] || {};
-  let s = 0;
   const rounds = [{key:'r16',real:REAL.r16,pred:fp.r16},{key:'r8',real:REAL.r8,pred:fp.r8},{key:'qf',real:REAL.qf,pred:fp.qf},{key:'sf',real:REAL.sf,pred:fp.sf}];
   for (const {key,real,pred} of rounds) {
     if (!pred) continue;
     const exclList = excl[key] || [];
     real.forEach((r,i) => {
       if (exclList.indexOf(i) !== -1) return; // match exclu (fiche reçue trop tard)
-      if (r && pred[i] && r===pred[i]) s += ROUND_PTS[key];
+      if (r && pred[i] && r===pred[i]) breakdown[key] += ROUND_PTS[key];
     });
   }
-  if (REAL.champion && fp.champion === REAL.champion) s += CHAMP_PTS;
-  return s;
+  if (REAL.champion && fp.champion === REAL.champion) breakdown.champ = CHAMP_PTS;
+  return breakdown;
+}
+function computeFinalsScore(p) {
+  const b = computeFinalsBreakdown(p);
+  return b.r16 + b.r8 + b.qf + b.sf + b.champ;
+}
+
+// ════ BARÈME (affiché une fois pour toutes, dérivé des constantes ci-dessus) ════
+function renderBareme() {
+  const bareme = `<div class="bareme">
+    <div class="bareme-item"><div class="bareme-pts">${GROUP_EXACT_PTS}</div><div class="bareme-label">Groupe : place exacte</div></div>
+    <div class="bareme-item"><div class="bareme-pts">${GROUP_QUALIFIED_PTS}</div><div class="bareme-label">Groupe : qualifié, mauvaise place</div></div>
+    <div class="bareme-item"><div class="bareme-pts">${THIRD_BEST_PTS}</div><div class="bareme-label">Meilleur 3e trouvé</div></div>
+    <div class="bareme-item"><div class="bareme-pts">${THIRD_QUALIFIED_PTS}</div><div class="bareme-label">3e qualifié autrement</div></div>
+    <div class="bareme-item"><div class="bareme-pts">${ROUND_PTS.r16}</div><div class="bareme-label">Bon vainqueur 16es</div></div>
+    <div class="bareme-item"><div class="bareme-pts">${ROUND_PTS.r8}</div><div class="bareme-label">Bon vainqueur 8es</div></div>
+    <div class="bareme-item"><div class="bareme-pts">${ROUND_PTS.qf}</div><div class="bareme-label">Bon vainqueur quarts</div></div>
+    <div class="bareme-item"><div class="bareme-pts">${ROUND_PTS.sf}</div><div class="bareme-label">Bon vainqueur demies</div></div>
+    <div class="bareme-item"><div class="bareme-pts">${CHAMP_PTS}</div><div class="bareme-label">Bon champion du monde</div></div>
+  </div>`;
+  ['bareme-content', 'bareme-content-finales'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = bareme;
+  });
 }
 
 // ════ RENDER CLASSEMENT ════
@@ -1356,10 +1406,10 @@ function renderClassement() {
 // ════ RENDER RÉSULTATS ════
 function renderResultats() {
   const rounds = [
-    {label:'16es de finale', matches:MATCHES_16, real:REAL.r16, pts:2},
-    {label:'8es de finale', matches:null, real:REAL.r8, pts:4, n:8},
-    {label:'Quarts de finale', matches:null, real:REAL.qf, pts:8, n:4},
-    {label:'Demi-finales', matches:null, real:REAL.sf, pts:16, n:2},
+    {label:'16es de finale', matches:MATCHES_16, real:REAL.r16, pts:ROUND_PTS.r16},
+    {label:'8es de finale', matches:null, real:REAL.r8, pts:ROUND_PTS.r8, n:8},
+    {label:'Quarts de finale', matches:null, real:REAL.qf, pts:ROUND_PTS.qf, n:4},
+    {label:'Demi-finales', matches:null, real:REAL.sf, pts:ROUND_PTS.sf, n:2},
   ];
   let html = '';
   for (const rnd of rounds) {
@@ -1555,7 +1605,7 @@ function showParticipantBracket(p) {
   // and colored by reality (green if pick matches real winner, red if pick eliminated/wrong).
   // excludedIdx: if this match index is in the participant's exclusion list for this round,
   // the pick is neutralized (no points) and shown greyed with a clock marker.
-  function matchCell(teamA, teamB, theirPick, realWinner, isExcluded, markElimNonPick) {
+  function matchCell(teamA, teamB, theirPick, realWinner, isExcluded, markElimNonPick, roundPts) {
     function teamRow(team) {
       if (team === undefined || team === null || team === '?') {
         return `<div class="mt-team mt-pending">à venir</div>`;
@@ -1567,12 +1617,12 @@ function showParticipantBracket(p) {
         if (isExcluded) {
           // Neutralized: sheet arrived too late for this match
           stateCls = 'mt-out';
-          badge = '🕐';
+          badge = '🕐 +0';
         } else if (realWinner) {
-          if (team === realWinner) { stateCls = 'mt-ok'; badge = '✓'; }
-          else { stateCls = 'mt-ko'; badge = '✗'; }
+          if (team === realWinner) { stateCls = 'mt-ok'; badge = `✓ +${roundPts}`; }
+          else { stateCls = 'mt-ko'; badge = '✗ +0'; }
         } else if (ELIMINATED.has(team)) {
-          stateCls = 'mt-ko'; badge = '✗';
+          stateCls = 'mt-ko'; badge = '✗ +0';
         } else {
           stateCls = 'mt-pick'; // their pick, not yet resolved
         }
@@ -1583,7 +1633,7 @@ function showParticipantBracket(p) {
         // this one is actually eliminated, it's a failed bet and should be red/barré too.
         if (markElimNonPick && ELIMINATED.has(team)) {
           stateCls = 'mt-ko';
-          badge = '✗';
+          badge = '✗ +0';
         } else {
           stateCls = 'mt-out';
         }
@@ -1594,46 +1644,54 @@ function showParticipantBracket(p) {
   }
 
   // Header
+  const fb = computeFinalsBreakdown(p);
   let h = `<div class="pbracket-head">
     <span class="pbracket-name">${p}</span>
     <span class="pbracket-score">+${finScore} <small>pts</small></span>
   </div>
-  <p class="pbracket-legend">Son chemin pronostiqué. <span class="lg lg-ok">vert</span> = bon, <span class="lg lg-ko">rouge</span> = perdu/éliminé, gris = battu dans son tableau.</p>`;
+  <p class="pbracket-legend">Son chemin pronostiqué. <span class="lg lg-ok">vert</span> = bon, <span class="lg lg-ko">rouge</span> = perdu/éliminé, gris = battu dans son tableau.</p>
+  <div class="pbracket-breakdown">
+    <span>16es (${ROUND_PTS.r16}pt/match) : <strong>+${fb.r16}</strong></span>
+    <span>8es (${ROUND_PTS.r8}pts/match) : <strong>+${fb.r8}</strong></span>
+    <span>Quarts (${ROUND_PTS.qf}pts/match) : <strong>+${fb.qf}</strong></span>
+    <span>Demies (${ROUND_PTS.sf}pts/match) : <strong>+${fb.sf}</strong></span>
+    <span>Champion (${CHAMP_PTS}pts) : <strong>+${fb.champ}</strong></span>
+  </div>`;
 
   // Tree using flex columns; each column vertically centers its matches via flexbox
   h += `<div class="tree-scroll"><div class="tree">`;
 
   // COL 16es
-  h += `<div class="tree-col"><div class="tree-col-head">16es</div><div class="tree-col-body">`;
+  h += `<div class="tree-col"><div class="tree-col-head">16es<span class="tree-col-pts">${ROUND_PTS.r16}pt/match</span></div><div class="tree-col-body">`;
   for (let i=0;i<16;i++){
-    h += `<div class="tree-slot">${matchCell(m16[i][0], m16[i][1], p16[i], r16[i], (exclusions.r16||[]).indexOf(i)!==-1, false)}</div>`;
+    h += `<div class="tree-slot">${matchCell(m16[i][0], m16[i][1], p16[i], r16[i], (exclusions.r16||[]).indexOf(i)!==-1, false, ROUND_PTS.r16)}</div>`;
   }
   h += `</div></div>`;
 
   // COL 8es
-  h += `<div class="tree-col"><div class="tree-col-head">8es</div><div class="tree-col-body">`;
+  h += `<div class="tree-col"><div class="tree-col-head">8es<span class="tree-col-pts">${ROUND_PTS.r8}pts/match</span></div><div class="tree-col-body">`;
   for (let i=0;i<8;i++){
-    h += `<div class="tree-slot">${matchCell(matchups8[i][0], matchups8[i][1], p8[i], r8[i], (exclusions.r8||[]).indexOf(i)!==-1, true)}</div>`;
+    h += `<div class="tree-slot">${matchCell(matchups8[i][0], matchups8[i][1], p8[i], r8[i], (exclusions.r8||[]).indexOf(i)!==-1, true, ROUND_PTS.r8)}</div>`;
   }
   h += `</div></div>`;
 
   // COL Quarts
-  h += `<div class="tree-col"><div class="tree-col-head">Quarts</div><div class="tree-col-body">`;
+  h += `<div class="tree-col"><div class="tree-col-head">Quarts<span class="tree-col-pts">${ROUND_PTS.qf}pts/match</span></div><div class="tree-col-body">`;
   for (let i=0;i<4;i++){
-    h += `<div class="tree-slot">${matchCell(matchupsQ[i][0], matchupsQ[i][1], pQ[i], qf[i], (exclusions.qf||[]).indexOf(i)!==-1, true)}</div>`;
+    h += `<div class="tree-slot">${matchCell(matchupsQ[i][0], matchupsQ[i][1], pQ[i], qf[i], (exclusions.qf||[]).indexOf(i)!==-1, true, ROUND_PTS.qf)}</div>`;
   }
   h += `</div></div>`;
 
   // COL Demis
-  h += `<div class="tree-col"><div class="tree-col-head">Demis</div><div class="tree-col-body">`;
+  h += `<div class="tree-col"><div class="tree-col-head">Demis<span class="tree-col-pts">${ROUND_PTS.sf}pts/match</span></div><div class="tree-col-body">`;
   for (let i=0;i<2;i++){
-    h += `<div class="tree-slot">${matchCell(matchupsS[i][0], matchupsS[i][1], pS[i], sf[i], (exclusions.sf||[]).indexOf(i)!==-1, true)}</div>`;
+    h += `<div class="tree-slot">${matchCell(matchupsS[i][0], matchupsS[i][1], pS[i], sf[i], (exclusions.sf||[]).indexOf(i)!==-1, true, ROUND_PTS.sf)}</div>`;
   }
   h += `</div></div>`;
 
   // COL Finale
   h += `<div class="tree-col"><div class="tree-col-head">Finale</div><div class="tree-col-body">`;
-  h += `<div class="tree-slot">${matchCell(matchupF[0], matchupF[1], pChamp, REAL.champion, false, true)}</div>`;
+  h += `<div class="tree-slot">${matchCell(matchupF[0], matchupF[1], pChamp, REAL.champion, false, true, CHAMP_PTS)}</div>`;
   h += `</div></div>`;
 
   // COL Champion
@@ -1641,10 +1699,10 @@ function showParticipantBracket(p) {
   const champElim = ELIMINATED.has(pChamp);
   let champCls = 'champ-pick';
   let champBadge = '';
-  if (champOk === true) { champCls='champ-ok'; champBadge='✓'; }
-  else if (champOk === false) { champCls='champ-ko'; champBadge='✗'; }
-  else if (champElim) { champCls='champ-ko'; champBadge='✗'; }
-  h += `<div class="tree-col"><div class="tree-col-head">Champion</div><div class="tree-col-body">
+  if (champOk === true) { champCls='champ-ok'; champBadge=`✓ +${CHAMP_PTS}`; }
+  else if (champOk === false) { champCls='champ-ko'; champBadge='✗ +0'; }
+  else if (champElim) { champCls='champ-ko'; champBadge='✗ +0'; }
+  h += `<div class="tree-col"><div class="tree-col-head">Champion<span class="tree-col-pts">${CHAMP_PTS}pts</span></div><div class="tree-col-body">
     <div class="tree-slot"><div class="champ-final ${champCls}">
       <div class="champ-trophy">🏆</div>
       <div class="champ-team">${withFlag(pChamp)}${champBadge?` <span class="mt-badge">${champBadge}</span>`:''}</div>
@@ -1984,6 +2042,7 @@ function saveResults() {
 
 // ════ INIT ════
 document.addEventListener('DOMContentLoaded', () => {
+  renderBareme();
   renderClassement();
   initGroupsSelect();
   ELIMINATED = getEliminated();
