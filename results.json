@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-07-07T22:52:40.181Z",
+  "updatedAt": "2026-07-10T00:51:37.690Z",
   "r8": {
     "0": {
       "teamA": "Paraguay",
@@ -50,7 +50,14 @@
       "winner": "Suisse"
     }
   },
-  "qf": {},
+  "qf": {
+    "0": {
+      "teamA": "France",
+      "teamB": "Maroc",
+      "score": "2-0",
+      "winner": "France"
+    }
+  },
   "sf": {},
   "final": {}
 }
