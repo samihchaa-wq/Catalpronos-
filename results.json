@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-07-10T21:14:06.164Z",
+  "updatedAt": "2026-07-11T23:50:44.685Z",
   "r8": {
     "0": {
       "teamA": "Paraguay",
@@ -62,6 +62,12 @@
       "teamB": "Belgique",
       "score": "2-1",
       "winner": "Espagne"
+    },
+    "2": {
+      "teamA": "Norvège",
+      "teamB": "Angleterre",
+      "score": "1-2",
+      "winner": "Norvège"
     }
   },
   "sf": {},
