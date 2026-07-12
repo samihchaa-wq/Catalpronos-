@@ -57,6 +57,10 @@
       if (typeof renderFinales === 'function') renderFinales();
       if (typeof renderBracket === 'function') renderBracket();
 
+      window.dispatchEvent(new CustomEvent('catalpronos:results-updated', {
+        detail: { updatedAt: data.updatedAt || null }
+      }));
+
       const updated = document.getElementById('last-update');
       if (updated && data.updatedAt) {
         updated.textContent = new Date(data.updatedAt).toLocaleString('fr-FR');
