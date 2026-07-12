@@ -1,4 +1,4 @@
-/* Catalpronos V4 — barème équilibré et brackets personnels simplifiés */
+/* Catalpronos V4 — score par équipe qualifiée, indépendamment de l'adversaire */
 (() => {
   'use strict';
 
@@ -10,20 +10,28 @@
     r16: 2,
     r8: 4,
     qf: 6,
-    sf: 8,
-    champion: 12
+    sf: 10,
+    champion: 0
   });
 
   const ROUND_CONFIG = [
-    { key: 'r16', label: '16es de finale', short: '16es', points: SCORING.r16, max: 16 },
-    { key: 'r8', label: '8es de finale', short: '8es', points: SCORING.r8, max: 8 },
-    { key: 'qf', label: 'Quarts de finale', short: 'Quarts', points: SCORING.qf, max: 4 },
-    { key: 'sf', label: 'Finalistes', short: 'Finalistes', points: SCORING.sf, max: 2 }
+    { key: 'r16', label: 'Vainqueurs des 16es', short: '16es', points: SCORING.r16, max: 16 },
+    { key: 'r8', label: 'Qualifiés en quarts', short: 'Quarts', points: SCORING.r8, max: 8 },
+    { key: 'qf', label: 'Qualifiés en demi-finales', short: 'Demis', points: SCORING.qf, max: 4 },
+    { key: 'sf', label: 'Qualifiés en finale', short: 'Finale', points: SCORING.sf, max: 2 }
   ];
 
   const MAX_GROUPS = 64;
-  const MAX_FINALS = 116;
+  const MAX_FINALS = ROUND_CONFIG.reduce((sum, round) => sum + round.points * round.max, 0);
   const MAX_TOTAL = MAX_GROUPS + MAX_FINALS;
+
+  function normalizedTeamSet(teams) {
+    return new Set((teams || []).filter(Boolean));
+  }
+
+  function isCorrectRoundPick(team, realTeams) {
+    return Boolean(team) && normalizedTeamSet(realTeams).has(team);
+  }
 
   function injectStyles() {
     if (document.getElementById('catalpronos-v4-styles')) return;
@@ -53,8 +61,6 @@
       .v4-pick.pending .v4-pick-status{background:var(--partial-bg);color:var(--partial);border:1px solid var(--partial)}
       .v4-pick.excluded .v4-pick-status{background:var(--surface2);color:var(--muted);border:1px solid var(--border)}
       .v4-pick-team{font-size:12px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v4-pick-sub{font-size:9px;color:var(--muted)}
-      .v4-champion{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px;border:1px solid var(--gold);border-radius:10px;background:linear-gradient(155deg,rgba(201,168,76,.13),var(--surface));margin-top:12px}
-      .v4-champion-team{font-size:16px;font-weight:850;color:var(--gold)}.v4-champion-points{font-size:13px;font-weight:800}
       .v4-legend{font-size:10px;color:var(--muted);line-height:1.6;margin-top:10px}
       @media(max-width:560px){.v4-score-grid,.v4-picks{grid-template-columns:1fr}.v4-person-head{align-items:flex-start}.v4-round-head{align-items:flex-start}}
     `;
@@ -68,16 +74,16 @@
     let score = 0;
 
     ROUND_CONFIG.forEach(round => {
-      const real = REAL[round.key] || [];
+      const realTeams = REAL[round.key] || [];
       const picks = prediction[round.key] || [];
       const excluded = exclusions[round.key] || [];
-      real.forEach((winner, index) => {
+
+      picks.forEach((team, index) => {
         if (excluded.includes(index)) return;
-        if (winner && picks[index] === winner) score += round.points;
+        if (isCorrectRoundPick(team, realTeams)) score += round.points;
       });
     });
 
-    if (REAL.champion && prediction.champion === REAL.champion) score += SCORING.champion;
     return score;
   };
 
@@ -87,30 +93,27 @@
     const parent = bareme.parentElement;
     if (!parent) return;
 
-    const previousIntro = parent.querySelector('.v4-rules-intro');
-    if (previousIntro) previousIntro.remove();
-    const previousTotal = parent.querySelector('.v4-total-line');
-    if (previousTotal) previousTotal.remove();
+    parent.querySelector('.v4-rules-intro')?.remove();
+    parent.querySelector('.v4-total-line')?.remove();
 
     const intro = document.createElement('div');
     intro.className = 'v4-rules-intro';
-    intro.innerHTML = '<strong>Un barème progressif, sans jackpot final</strong><span>La régularité sur tout le tournoi compte davantage que le seul choix du champion.</span>';
+    intro.innerHTML = '<strong>Le bon qualifié compte, quel que soit son adversaire</strong><span>Le placement exact dans le tableau et l’adversaire pronostiqué ne changent jamais les points.</span>';
     parent.insertBefore(intro, bareme);
 
     bareme.className = 'v4-score-grid';
     bareme.innerHTML = `
       <div class="v4-score-card"><div class="v4-score-value">2</div><div class="v4-score-title">Bonne position en groupe</div><div class="v4-score-note">1 pt si l’équipe est qualifiée mais mal placée</div></div>
       <div class="v4-score-card"><div class="v4-score-value">2</div><div class="v4-score-title">Bon meilleur 3e</div><div class="v4-score-note">1 pt si l’équipe est qualifiée autrement</div></div>
-      <div class="v4-score-card"><div class="v4-score-value">2</div><div class="v4-score-title">Vainqueur en 16es</div><div class="v4-score-note">16 matchs · 32 pts maximum</div></div>
-      <div class="v4-score-card"><div class="v4-score-value">4</div><div class="v4-score-title">Vainqueur en 8es</div><div class="v4-score-note">8 matchs · 32 pts maximum</div></div>
-      <div class="v4-score-card"><div class="v4-score-value">6</div><div class="v4-score-title">Demi-finaliste</div><div class="v4-score-note">4 équipes · 24 pts maximum</div></div>
-      <div class="v4-score-card"><div class="v4-score-value">8</div><div class="v4-score-title">Finaliste</div><div class="v4-score-note">2 équipes · 16 pts maximum</div></div>
-      <div class="v4-score-card highlight"><div class="v4-score-value">12</div><div class="v4-score-title">Champion du monde</div><div class="v4-score-note">Bonus important, mais non décisif à lui seul</div></div>
+      <div class="v4-score-card"><div class="v4-score-value">2</div><div class="v4-score-title">Vainqueur en 16es</div><div class="v4-score-note">Adversaire sans importance</div></div>
+      <div class="v4-score-card"><div class="v4-score-value">4</div><div class="v4-score-title">Qualifié en quarts</div><div class="v4-score-note">Adversaire sans importance</div></div>
+      <div class="v4-score-card"><div class="v4-score-value">6</div><div class="v4-score-title">Qualifié en demi-finales</div><div class="v4-score-note">Adversaire sans importance</div></div>
+      <div class="v4-score-card highlight"><div class="v4-score-value">10</div><div class="v4-score-title">Qualifié en finale</div><div class="v4-score-note">Adversaire sans importance</div></div>
     `;
 
     const total = document.createElement('div');
     total.className = 'v4-total-line';
-    total.innerHTML = `<span>Maximum théorique : groupes 64 + phase finale 116</span><strong>${MAX_TOTAL} pts</strong>`;
+    total.innerHTML = `<span>Maximum théorique : groupes 64 + phase finale ${MAX_FINALS}</span><strong>${MAX_TOTAL} pts</strong>`;
     bareme.after(total);
   }
 
@@ -120,24 +123,21 @@
     let html = '';
     ROUND_CONFIG.forEach(round => {
       const real = REAL[round.key] || [];
-      html += `<div class="results-section"><div class="round-label">${round.label} — ${round.points} pts par bon choix</div><div class="match-grid">`;
-      const count = round.max;
-      for (let i = 0; i < count; i += 1) {
+      html += `<div class="results-section"><div class="round-label">${round.label} — ${round.points} pts par équipe</div><div class="match-grid">`;
+      for (let i = 0; i < round.max; i += 1) {
         const winner = real[i];
-        html += `<div class="match-card"><div class="match-num">CHOIX ${i + 1}</div>${winner ? `<div class="match-winner">✓ ${withFlag(winner)}</div>` : '<div class="match-pending">En attente…</div>'}</div>`;
+        html += `<div class="match-card"><div class="match-num">ÉQUIPE ${i + 1}</div>${winner ? `<div class="match-winner">✓ ${withFlag(winner)}</div>` : '<div class="match-pending">En attente…</div>'}</div>`;
       }
       html += '</div></div>';
     });
-    html += `<div class="results-section"><div class="round-label">Champion du monde — ${SCORING.champion} pts</div>${REAL.champion ? `<div class="match-winner" style="max-width:320px;font-size:14px">🏆 ${withFlag(REAL.champion)}</div>` : '<div class="match-pending" style="max-width:320px">En attente de la finale…</div>'}</div>`;
     container.innerHTML = html;
   };
 
-  function pickState(team, realWinner, isExcluded) {
+  function pickState(team, realTeams, isExcluded) {
     if (isExcluded) return { cls: 'excluded', icon: '—', label: 'Non compté' };
-    if (realWinner) return team === realWinner
-      ? { cls: 'ok', icon: '✓', label: 'Bon choix' }
-      : { cls: 'ko', icon: '✕', label: 'Mauvais choix' };
-    if (typeof ELIMINATED !== 'undefined' && ELIMINATED.has(team)) return { cls: 'ko', icon: '✕', label: 'Éliminé' };
+    const completed = (realTeams || []).filter(Boolean).length;
+    if (isCorrectRoundPick(team, realTeams)) return { cls: 'ok', icon: '✓', label: 'Bon qualifié' };
+    if (completed > 0 && typeof ELIMINATED !== 'undefined' && ELIMINATED.has(team)) return { cls: 'ko', icon: '✕', label: 'Éliminé' };
     return { cls: 'pending', icon: '•', label: 'En cours' };
   }
 
@@ -156,32 +156,31 @@
 
     const exclusions = LATE_EXCLUSIONS[participant] || {};
     const total = computeFinalsScore(participant);
-    const percentage = Math.round((total / MAX_FINALS) * 100);
+    const percentage = MAX_FINALS ? Math.round((total / MAX_FINALS) * 100) : 0;
     let html = `
-      <div class="v4-person-head"><div><div class="v4-person-name">${participant}</div><div style="font-size:11px;color:var(--muted)">Détail clair de chaque tour</div></div><div class="v4-person-score">${total} <small>/ ${MAX_FINALS} pts</small></div></div>
+      <div class="v4-person-head"><div><div class="v4-person-name">${participant}</div><div style="font-size:11px;color:var(--muted)">Points par équipe qualifiée, sans tenir compte de l’adversaire</div></div><div class="v4-person-score">${total} <small>/ ${MAX_FINALS} pts</small></div></div>
       <div class="v4-progress"><div style="width:${percentage}%"></div></div>`;
 
     ROUND_CONFIG.forEach(round => {
       const picks = prediction[round.key] || [];
-      const real = REAL[round.key] || [];
+      const realTeams = REAL[round.key] || [];
       const excluded = exclusions[round.key] || [];
       let correct = 0;
+
       picks.forEach((team, index) => {
-        if (!excluded.includes(index) && real[index] && team === real[index]) correct += 1;
+        if (!excluded.includes(index) && isCorrectRoundPick(team, realTeams)) correct += 1;
       });
+
       const earned = correct * round.points;
       html += `<section class="v4-round"><div class="v4-round-head"><div class="v4-round-title">${round.label}</div><div class="v4-round-meta">${correct}/${round.max} bons · <span class="v4-round-points">${earned} pts</span></div></div><div class="v4-picks">`;
       picks.forEach((team, index) => {
-        const state = pickState(team, real[index], excluded.includes(index));
-        html += `<div class="v4-pick ${state.cls}"><div class="v4-pick-status">${state.icon}</div><div style="min-width:0"><div class="v4-pick-team">${withFlag(team)}</div><div class="v4-pick-sub">${state.label}${real[index] && team !== real[index] ? ` · réel : ${withFlag(real[index])}` : ''}</div></div></div>`;
+        const state = pickState(team, realTeams, excluded.includes(index));
+        html += `<div class="v4-pick ${state.cls}"><div class="v4-pick-status">${state.icon}</div><div style="min-width:0"><div class="v4-pick-team">${withFlag(team)}</div><div class="v4-pick-sub">${state.label}</div></div></div>`;
       });
       html += '</div></section>';
     });
 
-    const championState = pickState(prediction.champion, REAL.champion, false);
-    const championEarned = REAL.champion && prediction.champion === REAL.champion ? SCORING.champion : 0;
-    html += `<div class="v4-champion ${championState.cls}"><div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em">Champion pronostiqué</div><div class="v4-champion-team">🏆 ${withFlag(prediction.champion)}</div><div style="font-size:10px;color:var(--muted)">${championState.label}</div></div><div class="v4-champion-points">${championEarned} / ${SCORING.champion} pts</div></div>`;
-    html += '<div class="v4-legend">✓ Vert : correct · ✕ Rouge : faux ou éliminé · • Orange : encore possible · — Gris : non comptabilisé car fiche reçue trop tard.</div>';
+    html += '<div class="v4-legend">✓ Vert : l’équipe a atteint le tour demandé · ✕ Rouge : équipe éliminée · • Orange : encore possible · — Gris : non comptabilisé car fiche reçue trop tard.</div>';
     container.innerHTML = html;
   };
 
@@ -205,7 +204,13 @@
     if (typeof renderFinales === 'function') renderFinales();
   }
 
-  window.CatalpronosScoringV4 = Object.freeze({ scoring: SCORING, maxGroups: MAX_GROUPS, maxFinals: MAX_FINALS, maxTotal: MAX_TOTAL, refresh: refreshV4 });
+  window.CatalpronosScoringV4 = Object.freeze({
+    scoring: SCORING,
+    maxGroups: MAX_GROUPS,
+    maxFinals: MAX_FINALS,
+    maxTotal: MAX_TOTAL,
+    refresh: refreshV4
+  });
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', refreshV4);
   else refreshV4();
