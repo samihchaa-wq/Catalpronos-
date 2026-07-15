@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-07-12T08:00:00.000Z",
+  "updatedAt": "2026-07-15T01:35:42.467Z",
   "r8": {
     "0": {
       "teamA": "Paraguay",
@@ -76,6 +76,13 @@
       "winner": "Argentine"
     }
   },
-  "sf": {},
+  "sf": {
+    "0": {
+      "teamA": "France",
+      "teamB": "Espagne",
+      "score": "0-2",
+      "winner": "France"
+    }
+  },
   "final": {}
 }
