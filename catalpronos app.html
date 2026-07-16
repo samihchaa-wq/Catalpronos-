@@ -1295,8 +1295,8 @@ const GROUP_EXACT_PTS = 2;       // bonne équipe à la bonne place (1er ou 2e d
 const GROUP_QUALIFIED_PTS = 1;   // équipe qualifiée mais à la mauvaise place
 const THIRD_BEST_PTS = 2;        // bon "meilleur 3e" qualifié trouvé
 const THIRD_QUALIFIED_PTS = 1;   // l'équipe pronostiquée est qualifiée (1er/2e), mais pas via les meilleurs 3e
-const ROUND_PTS = {r16:1, r8:4, qf:8, sf:16}; // points par bon vainqueur pronostiqué, par tour
-const CHAMP_PTS = 20;             // bon champion du monde pronostiqué
+const ROUND_PTS = {r16:1, r8:2, qf:3, sf:4}; // équipe qui passe en 1/8e:1, 1/4:2, 1/2:3, finale:4
+const CHAMP_PTS = 5;               // équipe qui gagne la compétition
 const ROUND_LABELS = {r16:'16es', r8:'8es', qf:'Quarts', sf:'Demies'};
 
 // ════ SCORING ════
@@ -1979,10 +1979,10 @@ function getTeamsF() {
 
 function renderAdminMatches() {
   const rounds = [
-    { label:'16es de finale (1pt)', n:16, getTeams: getTeams16, key:'r16', matchNums: true },
-    { label:'8es de finale (4pts)', n:8, getTeams: getTeams8, key:'r8' },
-    { label:'Quarts de finale (8pts)', n:4, getTeams: getTeamsQF, key:'qf' },
-    { label:'Demi-finales (16pts)', n:2, getTeams: getTeamsSF, key:'sf' },
+    { label:`16es de finale (${ROUND_PTS.r16}pt)`, n:16, getTeams: getTeams16, key:'r16', matchNums: true },
+    { label:`8es de finale (${ROUND_PTS.r8}pts)`, n:8, getTeams: getTeams8, key:'r8' },
+    { label:`Quarts de finale (${ROUND_PTS.qf}pts)`, n:4, getTeams: getTeamsQF, key:'qf' },
+    { label:`Demi-finales (${ROUND_PTS.sf}pts)`, n:2, getTeams: getTeamsSF, key:'sf' },
     { label:'Finale', n:1, getTeams: getTeamsF, key:'finale' },
   ];
   let html = '';
